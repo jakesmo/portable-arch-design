@@ -13,7 +13,7 @@
 
   const $ = id => document.getElementById(id);
   const els = {
-    projectName: $('projectName'), dirtyStatus: $('dirtyStatus'), globalSearch: $('globalSearch'), searchResults: $('searchResults'),
+    projectName: $('projectName'), dirtyStatus: $('dirtyStatus'), globalSearch: $('globalSearch'), searchShortcutHint: $('searchShortcutHint'), searchResults: $('searchResults'),
     undoBtn: $('undoBtn'), redoBtn: $('redoBtn'), newProjectBtn: $('newProjectBtn'), openProjectBtn: $('openProjectBtn'),
     projectFileInput: $('projectFileInput'), validateBtn: $('validateBtn'), exportBtn: $('exportBtn'), viewList: $('viewList'),
     newViewBtn: $('newViewBtn'), layerFilters: $('layerFilters'), nodeCount: $('nodeCount'), edgeCount: $('edgeCount'),
@@ -144,6 +144,7 @@
   const repository = new WorkspaceRepository();
 
   async function initialize() {
+    renderPlatformShortcuts();
     try {
       state.db = await repository.open();
       const saved = await repository.load();
@@ -162,6 +163,12 @@
     bindStaticEvents();
     renderAll();
     requestAnimationFrame(() => fitToScreen(false));
+  }
+
+  function renderPlatformShortcuts() {
+    const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '';
+    const isApple = /mac|iphone|ipad|ipod/i.test(platform);
+    els.searchShortcutHint.textContent = isApple ? '⌘ K' : 'Ctrl K';
   }
 
   function scheduleSave() {
