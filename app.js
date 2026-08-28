@@ -23,7 +23,7 @@
     activeViewName: $('activeViewName'), viewMeta: $('viewMeta'), viewMenuBtn: $('viewMenuBtn'), addExistingBtn: $('addExistingBtn'),
     addObjectBtn: $('addObjectBtn'), canvasViewport: $('canvasViewport'), graphCanvas: $('graphCanvas'), canvasGrid: $('canvasGrid'),
     viewportGroup: $('viewportGroup'), edgeLayer: $('edgeLayer'), nodeLayer: $('nodeLayer'), interactionLayer: $('interactionLayer'),
-    emptyState: $('emptyState'), emptyAddObject: $('emptyAddObject'), emptyAddExisting: $('emptyAddExisting'), selectTool: $('selectTool'),
+    emptyState: $('emptyState'), emptyAddObject: $('emptyAddObject'), emptyAddExisting: $('emptyAddExisting'), selectTool: $('selectTool'), lassoTool: $('lassoTool'),
     connectTool: $('connectTool'), zoomOutBtn: $('zoomOutBtn'), zoomInBtn: $('zoomInBtn'), zoomLabel: $('zoomLabel'), fitBtn: $('fitBtn'),
     autoArrangeBtn: $('autoArrangeBtn'), layoutDirectionBtn: $('layoutDirectionBtn'), contextMenu: $('contextMenu'), toastRegion: $('toastRegion'),
     propertiesEmpty: $('propertiesEmpty'), propertiesPanel: $('propertiesPanel'), formDialog: $('formDialog'), modalForm: $('modalForm'),
@@ -51,6 +51,7 @@
     db: null,
     drag: null,
     panDrag: null,
+    lasso: null,
     modalCallback: null,
     confirmCallback: null
   };
@@ -359,7 +360,9 @@
     els.viewportGroup.setAttribute('transform', graphTransform());
     els.canvasGrid.setAttribute('transform', graphTransform());
     els.graphCanvas.classList.toggle('connecting', state.tool === 'connect');
+    els.graphCanvas.classList.toggle('lasso-mode', state.tool === 'lasso');
     els.selectTool.classList.toggle('active', state.tool === 'select');
+    els.lassoTool.classList.toggle('active', state.tool === 'lasso');
     els.connectTool.classList.toggle('active', state.tool === 'connect');
     els.zoomLabel.textContent = `${Math.round(state.zoom * 100)}%`;
     els.layoutDirectionBtn.textContent = state.layoutDirection;
@@ -736,6 +739,7 @@
 
   function startPan(event) {
     if (event.button !== 0 || event.target.closest('.graph-node, .graph-edge')) return;
+    if (state.tool === 'lasso') return startLasso(event);
     hideContextMenu();
     clearSelection(true);
     state.panDrag = { x: event.clientX, y: event.clientY, origin: { ...state.pan } };
@@ -755,6 +759,85 @@
     window.removeEventListener('pointermove', movePan);
     els.graphCanvas.classList.remove('dragging');
     state.panDrag = null;
+  }
+
+  function startLasso(event) {
+    hideContextMenu();
+    const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+    const start = screenToGraph(event.clientX, event.clientY);
+    const baseSelection = additive ? new Set(state.selectedNodeIds) : new Set();
+    state.selectedEdgeId = null;
+    state.selectedNodeIds = new Set(baseSelection);
+    state.lasso = { start, current: start, baseSelection };
+    renderLasso();
+    updateLiveSelectionStyles();
+    window.addEventListener('pointermove', moveLasso);
+    window.addEventListener('pointerup', finishLasso, { once: true });
+    window.addEventListener('pointercancel', cancelLasso, { once: true });
+  }
+
+  function lassoBounds() {
+    if (!state.lasso) return null;
+    return {
+      left: Math.min(state.lasso.start.x, state.lasso.current.x),
+      top: Math.min(state.lasso.start.y, state.lasso.current.y),
+      right: Math.max(state.lasso.start.x, state.lasso.current.x),
+      bottom: Math.max(state.lasso.start.y, state.lasso.current.y)
+    };
+  }
+
+  function recordIntersectsBounds(record, bounds) {
+    const width = nodeWidth(nodeById(record.nodeId));
+    return record.x <= bounds.right && record.x + width >= bounds.left && record.y <= bounds.bottom && record.y + NODE_H >= bounds.top;
+  }
+
+  function moveLasso(event) {
+    if (!state.lasso) return;
+    state.lasso.current = screenToGraph(event.clientX, event.clientY);
+    const bounds = lassoBounds();
+    const selected = new Set(state.lasso.baseSelection);
+    visibleGraph().records.forEach(record => { if (recordIntersectsBounds(record, bounds)) selected.add(record.nodeId); });
+    state.selectedNodeIds = selected;
+    renderLasso();
+    updateLiveSelectionStyles();
+  }
+
+  function renderLasso() {
+    const bounds = lassoBounds();
+    if (!bounds) return els.interactionLayer.replaceChildren();
+    const count = state.selectedNodeIds.size;
+    els.interactionLayer.innerHTML = `<g class="lasso-selection" pointer-events="none">
+      <rect class="lasso-rectangle" x="${bounds.left}" y="${bounds.top}" width="${bounds.right - bounds.left}" height="${bounds.bottom - bounds.top}" rx="4"></rect>
+      ${count ? `<g transform="translate(${bounds.right + 7} ${bounds.bottom + 7})"><rect class="lasso-count-bg" width="25" height="18" rx="8"></rect><text class="lasso-count" x="12.5" y="9.5">${count}</text></g>` : ''}
+    </g>`;
+  }
+
+  function updateLiveSelectionStyles() {
+    els.nodeLayer.querySelectorAll('.graph-node').forEach(group => group.classList.toggle('selected', state.selectedNodeIds.has(group.dataset.nodeId)));
+    els.edgeLayer.querySelectorAll('.graph-edge.selected').forEach(group => {
+      group.classList.remove('selected');
+      const line = group.querySelector('.graph-edge-line');
+      if (line && line.hasAttribute('marker-end')) line.setAttribute('marker-end', 'url(#arrowDefault)');
+    });
+  }
+
+  function finishLasso() {
+    window.removeEventListener('pointermove', moveLasso);
+    window.removeEventListener('pointercancel', cancelLasso);
+    state.lasso = null;
+    els.interactionLayer.replaceChildren();
+    renderGraph();
+    renderProperties();
+  }
+
+  function cancelLasso() {
+    if (!state.lasso) return;
+    window.removeEventListener('pointermove', moveLasso);
+    window.removeEventListener('pointerup', finishLasso);
+    window.removeEventListener('pointercancel', cancelLasso);
+    state.selectedNodeIds = new Set(state.lasso.baseSelection);
+    state.lasso = null;
+    els.interactionLayer.replaceChildren();
   }
 
   function screenToGraph(clientX, clientY) {
@@ -805,6 +888,7 @@
   }
 
   function setTool(tool) {
+    if (state.lasso && tool !== 'lasso') cancelLasso();
     state.tool = tool;
     if (tool !== 'connect') state.connectSourceId = null;
     renderGraph();
@@ -1308,7 +1392,9 @@
     els.emptyAddExisting.addEventListener('click', openBrowseExistingDialog);
     els.viewMenuBtn.addEventListener('click', event => showViewContext(event.clientX, event.clientY));
     els.undoBtn.addEventListener('click', undo); els.redoBtn.addEventListener('click', redo);
-    els.selectTool.addEventListener('click', () => setTool('select')); els.connectTool.addEventListener('click', () => setTool(state.tool === 'connect' ? 'select' : 'connect'));
+    els.selectTool.addEventListener('click', () => setTool('select'));
+    els.lassoTool.addEventListener('click', () => setTool(state.tool === 'lasso' ? 'select' : 'lasso'));
+    els.connectTool.addEventListener('click', () => setTool(state.tool === 'connect' ? 'select' : 'connect'));
     els.graphCanvas.addEventListener('pointerdown', startPan);
     els.graphCanvas.addEventListener('wheel', event => { event.preventDefault(); zoomAt(event.deltaY < 0 ? 1.1 : .9, event.clientX, event.clientY); }, { passive: false });
     els.zoomOutBtn.addEventListener('click', () => zoomAt(.85)); els.zoomInBtn.addEventListener('click', () => zoomAt(1.15));
@@ -1323,7 +1409,7 @@
       <div class="report-item"><strong>Delete</strong> removes selected objects from this view. <strong>Shift+Delete</strong> deletes them from the canonical model.</div>
       <div class="report-item">Use <strong>Show dependencies</strong> to generate a reusable graph from any object.</div>
       <div class="report-item"><strong>Export</strong> creates deterministic <code>.arch.json</code> for Git. Browser autosave never overwrites that file.</div>
-      <div class="report-item">Shortcuts: Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z redo, V select, C connect, 0 fit, Delete remove from view.</div>`, onSubmit: () => true }));
+      <div class="report-item">Shortcuts: Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z redo, V select, L lasso, C connect, 0 fit, Delete remove from view.</div>`, onSubmit: () => true }));
     document.addEventListener('pointerdown', event => {
       if (!event.target.closest('.context-menu, #viewMenuBtn, #nodeMoreBtn')) hideContextMenu();
       if (!event.target.closest('.search-wrap')) els.searchResults.classList.add('hidden');
@@ -1337,9 +1423,10 @@
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); return; }
     if (editing) return;
     if (event.key.toLowerCase() === 'v') setTool('select');
+    if (event.key.toLowerCase() === 'l') setTool('lasso');
     if (event.key.toLowerCase() === 'c') setTool('connect');
     if (event.key === '0') fitToScreen();
-    if (event.key === 'Escape') { clearSelection(true); setTool('select'); hideContextMenu(); }
+    if (event.key === 'Escape') { setTool('select'); clearSelection(true); hideContextMenu(); }
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
       if (state.selectedEdgeId) return deleteEdge(state.selectedEdgeId);

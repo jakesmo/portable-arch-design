@@ -178,6 +178,7 @@ svg { display: block; }
 .canvas-viewport { position: relative; min-height: 0; overflow: hidden; outline: none; background: #f5f6f8; }
 .graph-canvas { width: 100%; height: 100%; display: block; user-select: none; touch-action: none; cursor: grab; }
 .graph-canvas.connecting { cursor: crosshair; }
+.graph-canvas.lasso-mode { cursor: crosshair; }
 .graph-canvas.dragging { cursor: grabbing; }
 .canvas-grid { pointer-events: all; }
 .graph-edge-hit { fill: none; stroke: transparent; stroke-width: 16; cursor: pointer; }
@@ -200,6 +201,9 @@ svg { display: block; }
 .node-tag-text { fill: #69717d; font-size: 8px; font-weight: 620; text-anchor: middle; dominant-baseline: middle; }
 .node-handle { fill: #fff; stroke: var(--blue); stroke-width: 1.5; opacity: 0; transition: opacity .1s; }
 .graph-node:hover .node-handle, .graph-canvas.connecting .node-handle { opacity: 1; }
+.lasso-rectangle { fill: rgba(49, 91, 239, .08); stroke: var(--blue); stroke-width: 1.25; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.lasso-count-bg { fill: var(--blue); }
+.lasso-count { fill: white; font-size: 9px; font-weight: 750; text-anchor: middle; dominant-baseline: middle; }
 .selection-count { position: absolute; top: 13px; left: 50%; transform: translateX(-50%); padding: 6px 10px; border-radius: 7px; background: var(--ink); color: white; font-size: 10px; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
 
 .empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 45px; text-align: center; pointer-events: none; }

@@ -32,6 +32,7 @@ Browser-local work is autosaved transactionally in IndexedDB. Use **Export** to 
 | `Ctrl/⌘ + Z` | Undo |
 | `Ctrl/⌘ + Shift + Z` | Redo |
 | `V` | Select tool |
+| `L` | Lasso multi-select tool |
 | `C` | Relationship tool |
 | `0` | Fit graph to screen |
 | `Delete` | Remove selection from the active view |
