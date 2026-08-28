@@ -2,11 +2,11 @@
 
 A portable, browser-native editor for multi-layer technical dependency graphs. It keeps one canonical model of objects and relationships while allowing independent graph projections with their own membership, filters, and layout.
 
-![Architecture Graph interface](./architecture-graph-preview.png)
+![Architecture Graph interface](./doc/architecture-graph-preview.png)
 
 ## Run it
 
-Open [`ArchitectureGraph.html`](./ArchitectureGraph.html) directly in a modern browser. No server, package install, database, or build step is required.
+Open [`portable-arch-design.html`](./portable-arch-design.html) directly in a modern browser. The application is fully self-contained in that one HTML file: interface styling, schema/core logic, editor logic, and browser-local persistence are all embedded. No server, package install, database, runtime, or build step is required.
 
 Browser-local work is autosaved transactionally in IndexedDB. Use **Export** to create the deterministic `<ProjectName>.arch.json` artifact intended for Git, sharing, and archival. Import it again with **Open**.
 
@@ -40,10 +40,21 @@ Browser-local work is autosaved transactionally in IndexedDB. Use **Export** to 
 
 ## Files
 
-- `ArchitectureGraph.html` — static application shell
-- `app.css` — interface and graph styling
-- `app.js` — editor state, IndexedDB repository, interactions, and workflows
-- `core.js` — independently testable schema, canonical serializer, validation, traversal, and analysis
-- `tests/core.test.html` — dependency-free browser test suite
+```text
+.
+├── portable-arch-design.html          # complete standalone application
+├── README.md
+├── doc/
+│   ├── architecture-graph-preview.png # README preview image
+│   └── spec.md                       # architecture specification
+└── tests/
+    └── core.test.html               # browser core test runner
+```
 
-Open `tests/core.test.html` in a browser to run the core tests. The page reports `PASS` when deterministic export, round-trip stability, stable IDs, view independence, reference validation, conflict-marker detection, traversal, and cycle analysis succeed.
+`portable-arch-design.html` is the only runtime application file. There are no separate CSS or JavaScript dependencies.
+
+Open [`tests/core.test.html`](./tests/core.test.html) directly in a browser to run the core tests. The runner loads `../portable-arch-design.html?core-test=1` in a hidden frame and invokes the `ArchitectureCore` implementation embedded in the actual application. The core module is therefore defined only once: tests always exercise the production implementation rather than a copied test version.
+
+The `core-test=1` query flag enables a small test-only message bridge and suppresses normal workspace initialization. It does not affect normal launches of `portable-arch-design.html`.
+
+The test page reports `PASS` when deterministic export, round-trip stability, stable IDs, view independence, reference validation, conflict-marker detection, traversal, and cycle analysis succeed.

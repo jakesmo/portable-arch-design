@@ -18,7 +18,7 @@ The tool should be usable without installing any application, runtime, database,
 Distribution should ideally consist of:
 
 ```text
-ArchitectureGraph.html
+portable-arch-design.html
 Project.arch.json
 ```
 
@@ -133,13 +133,13 @@ Use canonical serialization code rather than relying on JavaScript object insert
 Preferred build output:
 
 ```text
-ArchitectureGraph.html
+portable-arch-design.html
 ```
 
 A small adjacent JS/CSS bundle is acceptable if producing a single HTML file becomes unnecessarily difficult:
 
 ```text
-ArchitectureGraph/
+portable-arch-design/
 ├── index.html
 ├── app.js
 └── app.css

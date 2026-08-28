@@ -1,19 +1,58 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Architecture Graph core tests</title></head>
+<head>
+  <meta charset="utf-8">
+  <title>Architecture Graph core tests</title>
+</head>
 <body>
   <pre id="result">RUNNING</pre>
-  <script src="../core.js"></script>
+  <iframe id="appFrame" src="../portable-arch-design.html?core-test=1" hidden title="Architecture Graph test host"></iframe>
   <script>
     (function () {
-      const C = window.ArchitectureCore;
+      'use strict';
+
+      const result = document.getElementById('result');
+      const frame = document.getElementById('appFrame');
       const messages = [];
+      const pending = new Map();
+      let requestId = 0;
+
       function assert(condition, message) {
         if (!condition) throw new Error(message);
         messages.push(`✓ ${message}`);
       }
-      try {
-        const a = C.createEmptyProject('Determinism Test');
+
+      function core(method, ...args) {
+        return new Promise((resolve, reject) => {
+          const id = `core-test-${++requestId}`;
+          pending.set(id, { resolve, reject });
+          frame.contentWindow.postMessage({
+            type: 'architecture-core-test-request',
+            id,
+            method,
+            args
+          }, '*');
+        });
+      }
+
+      window.addEventListener('message', event => {
+        if (event.source !== frame.contentWindow) return;
+        const response = event.data;
+        if (!response || response.type !== 'architecture-core-test-response') return;
+        const request = pending.get(response.id);
+        if (!request) return;
+        pending.delete(response.id);
+        if (response.ok) request.resolve(response.result);
+        else {
+          const error = new Error(response.error && response.error.message || 'ArchitectureCore test request failed.');
+          if (response.error && response.error.name) error.name = response.error.name;
+          if (response.error && response.error.stack) error.stack = response.error.stack;
+          request.reject(error);
+        }
+      });
+
+      async function run() {
+        const a = await core('createEmptyProject', 'Determinism Test');
         a.nodes.push(
           { id: 'service.zeta', type: 'service', name: 'Zeta', description: '', tags: ['beta', 'alpha'], properties: { z: 'last', a: 'first' } },
           { id: 'service.alpha', type: 'service', name: 'Alpha', description: '', tags: [], properties: {} }
@@ -26,12 +65,12 @@
         b.nodes.find(node => node.id === 'service.zeta').tags.reverse();
         b.nodes.find(node => node.id === 'service.zeta').properties = { a: 'first', z: 'last' };
         b.views[0].nodes.reverse();
-        assert(C.canonicalSerialize(a) === C.canonicalSerialize(b), 'serialization ignores insertion and property creation order');
+        assert(await core('canonicalSerialize', a) === await core('canonicalSerialize', b), 'serialization ignores insertion and property creation order');
 
-        const serialized = C.canonicalSerialize(a);
+        const serialized = await core('canonicalSerialize', a);
         assert(serialized.endsWith('\n') && !serialized.endsWith('\n\n'), 'serialization ends with exactly one LF');
         assert(serialized.includes('"x": 320') && serialized.includes('"y": 180'), 'coordinates normalize to integers');
-        assert(JSON.stringify(C.parseProject(serialized)) === JSON.stringify(C.normalizeProject(a)), 'export/import round trip is semantically stable');
+        assert(JSON.stringify(await core('parseProject', serialized)) === JSON.stringify(await core('normalizeProject', a)), 'export/import round trip is semantically stable');
 
         const stableId = a.nodes[0].id;
         a.nodes[0].name = 'Renamed Zeta';
@@ -41,21 +80,25 @@
         a.views[0].nodes.find(item => item.nodeId === 'service.zeta').x = 900;
         assert(a.views[1].nodes[0].x === 5, 'moving an object in one view leaves other layouts unchanged');
 
-        const traversal = C.dependencyTraversal(a, 'service.zeta', { direction: 'downstream', depth: 1, types: ['depends_on'] });
+        const traversal = await core('dependencyTraversal', a, 'service.zeta', { direction: 'downstream', depth: 1, types: ['depends_on'] });
         assert(traversal.nodeIds.join(',') === 'service.alpha,service.zeta', 'dependency traversal respects direction, depth, and type');
 
         const invalid = JSON.parse(JSON.stringify(a));
         invalid.nodes.push(JSON.parse(JSON.stringify(invalid.nodes[0])));
         invalid.edges[0].target = 'service.missing';
-        const report = C.validateProject(invalid);
+        const report = await core('validateProject', invalid);
         assert(report.errors.some(item => item.includes('Duplicate node ID')), 'validation detects duplicate IDs');
         assert(report.errors.some(item => item.includes('missing target')), 'validation detects dangling edge references');
 
         let conflictDetected = false;
-        try { C.parseProject('<<<<<<< HEAD\n{}\n=======\n{}\n>>>>>>> branch'); } catch (error) { conflictDetected = error.message.includes('merge conflicts'); }
+        try {
+          await core('parseProject', '<<<<<<< HEAD\n{}\n=======\n{}\n>>>>>>> branch');
+        } catch (error) {
+          conflictDetected = error.message.includes('merge conflicts');
+        }
         assert(conflictDetected, 'import detects unresolved Git conflict markers');
 
-        const cyclic = C.createEmptyProject('Cycle');
+        const cyclic = await core('createEmptyProject', 'Cycle');
         cyclic.nodes.push(
           { id: 'service.a', type: 'service', name: 'A', description: '', tags: [], properties: {} },
           { id: 'service.b', type: 'service', name: 'B', description: '', tags: [], properties: {} }
@@ -64,14 +107,18 @@
           { id: 'edge.a.b', source: 'service.a', target: 'service.b', type: 'depends_on', description: '', properties: {} },
           { id: 'edge.b.a', source: 'service.b', target: 'service.a', type: 'requires', description: '', properties: {} }
         );
-        assert(C.dependencyCycles(cyclic).length === 1, 'dependency cycle analysis detects loops');
+        assert((await core('dependencyCycles', cyclic)).length === 1, 'dependency cycle analysis detects loops');
 
-        document.getElementById('result').textContent = `PASS (${messages.length} tests)\n${messages.join('\n')}`;
+        result.textContent = `PASS (${messages.length} tests)\n${messages.join('\n')}`;
         document.body.dataset.status = 'pass';
-      } catch (error) {
-        document.getElementById('result').textContent = `FAIL\n${error.stack || error.message}`;
-        document.body.dataset.status = 'fail';
       }
+
+      frame.addEventListener('load', () => {
+        run().catch(error => {
+          result.textContent = `FAIL\n${error.stack || error.message}`;
+          document.body.dataset.status = 'fail';
+        });
+      });
     })();
   </script>
 </body>

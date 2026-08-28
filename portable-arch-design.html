@@ -1,3 +1,1000 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f5f7">
+  <title>Architecture Graph</title>
+  <style>
+:root {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --panel-soft: #fafbfc;
+  --line: #e2e5ea;
+  --line-strong: #d2d6dd;
+  --ink: #1c2430;
+  --muted: #707887;
+  --muted-2: #9ba2ad;
+  --blue: #315bef;
+  --blue-dark: #2348ce;
+  --blue-soft: #eef2ff;
+  --green: #138a63;
+  --red: #c54242;
+  --red-soft: #fff0f0;
+  --amber: #b36a15;
+  --people: #8767e8;
+  --people-soft: #f0ecff;
+  --operational: #e4932e;
+  --operational-soft: #fff3df;
+  --logical: #3877e3;
+  --logical-soft: #eaf2ff;
+  --physical: #1c9a83;
+  --physical-soft: #e4f7f2;
+  --data: #d05084;
+  --data-soft: #fceaf2;
+  --radius: 10px;
+  --shadow: 0 12px 34px rgba(28, 36, 48, .12);
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); }
+body { font-size: 13px; -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+svg { display: block; }
+.hidden { display: none !important; }
+
+.app-shell { height: 100vh; min-width: 980px; display: grid; grid-template-rows: 68px 1fr; }
+
+.topbar {
+  position: relative;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(300px, 570px) minmax(440px, 1fr);
+  align-items: center;
+  gap: 22px;
+  padding: 0 18px 0 20px;
+  background: rgba(255,255,255,.96);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(20, 31, 46, .03);
+}
+
+.brand-cluster, .project-row, .top-actions, .canvas-actions, .view-heading-wrap { display: flex; align-items: center; }
+.brand-cluster { min-width: 0; gap: 12px; }
+.brand-mark { width: 32px; height: 32px; position: relative; flex: 0 0 auto; }
+.brand-mark span { position: absolute; width: 10px; height: 10px; border-radius: 3px; background: var(--ink); }
+.brand-mark span:nth-child(1) { left: 1px; top: 1px; background: var(--blue); }
+.brand-mark span:nth-child(2) { right: 2px; top: 1px; }
+.brand-mark span:nth-child(3) { left: 1px; bottom: 2px; }
+.brand-mark span:nth-child(4) { right: 2px; bottom: 2px; background: var(--physical); }
+.brand-mark::before, .brand-mark::after { content: ''; position: absolute; background: #b9c0cb; z-index: 0; }
+.brand-mark::before { width: 16px; height: 1px; left: 8px; top: 8px; transform: rotate(45deg); }
+.brand-mark::after { width: 1px; height: 16px; left: 8px; top: 8px; }
+.project-identity { min-width: 0; }
+.project-row { gap: 8px; min-width: 0; }
+.project-name { border: 0; background: transparent; padding: 0; max-width: 250px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; font-weight: 690; text-align: left; }
+.project-name:hover { color: var(--blue); }
+.brand-label { font-size: 9px; font-weight: 750; letter-spacing: .16em; color: var(--muted-2); margin-top: 3px; }
+.status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; border-radius: 99px; color: var(--muted); background: #f1f3f5; font-size: 10px; white-space: nowrap; }
+.status-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+.status-badge.modified { color: #92550d; background: #fff5e7; }
+.status-badge.modified::before { background: #e5942d; }
+.status-badge.exported { color: var(--green); background: #eaf7f2; }
+
+.search-wrap { position: relative; height: 38px; }
+.search-wrap > input { width: 100%; height: 100%; border: 1px solid var(--line); border-radius: 9px; background: #f5f6f8; padding: 0 48px 0 38px; outline: none; transition: .15s ease; }
+.search-wrap > input:focus { background: white; border-color: #a9b9f8; box-shadow: 0 0 0 3px rgba(49,91,239,.1); }
+.search-icon { position: absolute; z-index: 1; left: 13px; top: 11px; width: 17px; height: 17px; fill: none; stroke: var(--muted); stroke-width: 1.8; }
+.search-wrap > kbd { position: absolute; right: 9px; top: 9px; border: 1px solid var(--line-strong); border-radius: 5px; background: #fff; color: var(--muted); font-size: 10px; padding: 3px 5px; box-shadow: 0 1px 0 #d6dae0; }
+.search-results { position: absolute; left: 0; right: 0; top: 45px; max-height: 420px; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; z-index: 100; }
+.search-result { width: 100%; border: 0; border-radius: 8px; background: transparent; padding: 9px 10px; display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 9px; text-align: left; }
+.search-result:hover, .search-result.active { background: var(--blue-soft); }
+.result-icon { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: var(--cat-color); background: var(--cat-soft); font-weight: 750; font-size: 11px; }
+.result-copy strong, .result-copy span { display: block; }
+.result-copy strong { font-size: 12px; margin-bottom: 2px; }
+.result-copy span, .result-view { font-size: 10px; color: var(--muted); }
+.search-empty { padding: 22px; text-align: center; color: var(--muted); }
+
+.top-actions { justify-content: flex-end; gap: 7px; white-space: nowrap; }
+.action-divider { height: 23px; width: 1px; background: var(--line); margin: 0 2px; }
+.button, .icon-button, .mini-icon-button, .floating-toolbar button {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: background .15s, border-color .15s, color .15s, transform .08s;
+}
+.button { height: 35px; padding: 0 12px; font-weight: 630; }
+.button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.button:hover, .icon-button:hover, .mini-icon-button:hover { background: #f1f3f6; }
+.button:active { transform: translateY(1px); }
+.button.secondary { border-color: var(--line); background: #fff; }
+.button.secondary:hover { border-color: var(--line-strong); background: #f8f9fa; }
+.button.primary { background: var(--blue); color: white; box-shadow: 0 2px 5px rgba(49,91,239,.2); }
+.button.primary:hover { background: var(--blue-dark); }
+.button.dark { background: var(--ink); color: #fff; }
+.button.dark:hover { background: #2d3745; }
+.button.danger { background: var(--red); color: white; }
+.button.danger:hover { background: #ac3030; }
+.button.compact { height: 31px; font-size: 11px; padding: 0 9px; background: white; border-color: var(--line); }
+.button:disabled, .icon-button:disabled { cursor: not-allowed; opacity: .35; }
+.icon-button { width: 33px; height: 33px; padding: 0; }
+.icon-button svg, .mini-icon-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.workspace { min-height: 0; display: grid; grid-template-columns: 238px minmax(480px, 1fr) 292px; }
+.sidebar { min-height: 0; background: var(--panel); z-index: 10; }
+.left-sidebar { border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
+.right-sidebar { border-left: 1px solid var(--line); overflow-y: auto; overflow-x: hidden; }
+.sidebar-section { padding: 17px 13px 10px; border-bottom: 1px solid var(--line); }
+.views-section { flex: 0 1 auto; min-height: 180px; }
+.section-heading { min-height: 23px; padding: 0 6px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 10px; font-weight: 780; letter-spacing: .11em; text-transform: uppercase; }
+.mini-icon-button { width: 24px; height: 24px; padding: 0; color: var(--muted); }
+.mini-icon-button svg { width: 15px; height: 15px; }
+.view-list { margin-top: 6px; display: grid; gap: 2px; }
+.view-item { width: 100%; height: 37px; border: 0; border-radius: 7px; background: transparent; display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 4px; padding: 0 7px; text-align: left; color: #49515e; }
+.view-item:hover { background: #f3f5f7; }
+.view-item.active { color: var(--ink); background: #edf1ff; font-weight: 680; }
+.view-item svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.view-item .view-count { min-width: 21px; padding: 2px 5px; border-radius: 99px; background: #edf0f3; text-align: center; color: var(--muted); font-size: 10px; font-weight: 600; }
+.view-item.active .view-count { background: #dce4ff; color: var(--blue); }
+.view-item .view-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-section { flex: 0 0 auto; }
+.layer-filters { padding: 5px 2px 3px; display: grid; gap: 2px; }
+.layer-check { height: 31px; display: flex; align-items: center; gap: 9px; padding: 0 6px; border-radius: 6px; cursor: pointer; color: #505966; }
+.layer-check:hover { background: #f5f6f8; }
+.layer-check input { appearance: none; width: 15px; height: 15px; border: 1.5px solid #b8bec8; border-radius: 4px; display: grid; place-items: center; margin: 0; }
+.layer-check input:checked { background: var(--blue); border-color: var(--blue); }
+.layer-check input:checked::after { content: ''; width: 7px; height: 4px; border-left: 1.5px solid white; border-bottom: 1.5px solid white; transform: rotate(-45deg) translate(1px,-1px); }
+.layer-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat-color); }
+.layer-check span:nth-of-type(2) { flex: 1; }
+.layer-check small { color: var(--muted-2); font-size: 10px; }
+.overview-section { flex: 1 1 auto; border-bottom: 0; min-height: 185px; }
+.stat-grid { margin: 7px 5px 14px; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stat-grid > div { padding: 9px 3px 8px; text-align: center; border-right: 1px solid var(--line); }
+.stat-grid > div:last-child { border-right: 0; }
+.stat-grid strong, .stat-grid span { display: block; }
+.stat-grid strong { font-size: 15px; }
+.stat-grid span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.category-bars { display: grid; gap: 7px; padding: 0 6px; }
+.category-row { display: grid; grid-template-columns: 66px 1fr 18px; align-items: center; gap: 7px; font-size: 9px; color: var(--muted); text-transform: capitalize; }
+.category-track { height: 4px; border-radius: 99px; background: #eef0f3; overflow: hidden; }
+.category-track span { display: block; height: 100%; width: var(--width); background: var(--cat-color); border-radius: inherit; }
+.category-row b { text-align: right; color: #5d6571; }
+.health-line { margin: 14px 6px 0; padding-top: 10px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; }
+.health-line .health-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.health-line.warn .health-dot { background: var(--amber); }
+.sidebar-footer { height: 44px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); color: var(--muted-2); font-size: 9px; }
+.local-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 5px; }
+.plain-button { border: 0; background: transparent; padding: 3px; color: var(--muted); }
+.plain-button:hover { color: var(--blue); }
+
+.canvas-panel { min-width: 0; min-height: 0; display: grid; grid-template-rows: 56px 1fr; background: var(--bg); }
+.canvas-topline { display: flex; align-items: center; justify-content: space-between; padding: 0 14px 0 19px; border-bottom: 1px solid var(--line); background: #fff; z-index: 9; }
+.view-heading-wrap { gap: 10px; }
+.view-title-button { display: inline-flex; align-items: center; gap: 5px; padding: 4px; border: 0; background: transparent; font-size: 14px; font-weight: 700; }
+.view-title-button:hover { color: var(--blue); }
+.view-title-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+.view-meta { color: var(--muted); font-size: 10px; padding-left: 10px; border-left: 1px solid var(--line); }
+.canvas-actions { gap: 7px; }
+.canvas-button { background: white; border-color: var(--line); }
+.canvas-viewport { position: relative; min-height: 0; overflow: hidden; outline: none; background: #f5f6f8; }
+.graph-canvas { width: 100%; height: 100%; display: block; user-select: none; touch-action: none; cursor: grab; }
+.graph-canvas.connecting { cursor: crosshair; }
+.graph-canvas.lasso-mode { cursor: crosshair; }
+.graph-canvas.dragging { cursor: grabbing; }
+.canvas-grid { pointer-events: all; }
+.graph-edge-hit { fill: none; stroke: transparent; stroke-width: 16; cursor: pointer; }
+.graph-edge-line { fill: none; stroke: #8a929f; stroke-width: 1.4; pointer-events: none; }
+.graph-edge.selected .graph-edge-line { stroke: var(--blue); stroke-width: 2; }
+.edge-label-bg { fill: rgba(255,255,255,.94); stroke: #dfe2e7; stroke-width: .7; }
+.edge-label { fill: #68717d; font-size: 10px; font-weight: 620; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+.graph-edge.selected .edge-label { fill: var(--blue); }
+.graph-node { cursor: pointer; }
+.graph-node .node-body { fill: white; stroke: #d8dce2; stroke-width: 1; filter: url(#nodeShadow); transition: stroke .12s; }
+.graph-node:hover .node-body { stroke: #aeb5bf; }
+.graph-node.selected .node-body { stroke: var(--blue); stroke-width: 2; }
+.graph-node.connect-source .node-body { stroke: var(--blue); stroke-width: 2.4; stroke-dasharray: 5 3; }
+.node-accent { fill: var(--cat-color); }
+.node-icon-bg { fill: var(--cat-soft); }
+.node-icon-glyph { fill: var(--cat-color); font-size: 12px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
+.node-name { fill: #252e3a; font-size: 12px; font-weight: 700; }
+.node-type { fill: #818996; font-size: 9.5px; font-weight: 580; }
+.node-tag-bg { fill: #f1f3f6; }
+.node-tag-text { fill: #69717d; font-size: 8px; font-weight: 620; text-anchor: middle; dominant-baseline: middle; }
+.node-handle { fill: #fff; stroke: var(--blue); stroke-width: 1.5; opacity: 0; transition: opacity .1s; }
+.graph-node:hover .node-handle, .graph-canvas.connecting .node-handle { opacity: 1; }
+.lasso-rectangle { fill: rgba(49, 91, 239, .08); stroke: var(--blue); stroke-width: 1.25; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.lasso-count-bg { fill: var(--blue); }
+.lasso-count { fill: white; font-size: 9px; font-weight: 750; text-anchor: middle; dominant-baseline: middle; }
+.selection-count { position: absolute; top: 13px; left: 50%; transform: translateX(-50%); padding: 6px 10px; border-radius: 7px; background: var(--ink); color: white; font-size: 10px; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+
+.empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 45px; text-align: center; pointer-events: none; }
+.empty-state > * { pointer-events: auto; }
+.empty-illustration { width: 210px; height: 116px; position: relative; }
+.empty-illustration svg { width: 100%; height: 100%; fill: none; stroke: #c4cad4; stroke-width: 1.2; stroke-dasharray: 4 4; }
+.empty-node { position: absolute; z-index: 2; width: 44px; height: 32px; border: 1px solid var(--line-strong); border-radius: 8px; background: white; box-shadow: 0 3px 8px rgba(28,36,48,.08); }
+.empty-node::after { content: ''; position: absolute; left: 9px; right: 9px; top: 9px; height: 4px; border-radius: 2px; background: #d8dce3; box-shadow: 0 8px 0 #eef0f3; }
+.empty-node.n1 { left: 5px; top: 52px; border-top: 3px solid var(--people); }
+.empty-node.n2 { left: 86px; top: 5px; border-top: 3px solid var(--logical); }
+.empty-node.n3 { right: 2px; top: 58px; border-top: 3px solid var(--physical); }
+.empty-state h2 { margin: 10px 0 7px; font-size: 18px; letter-spacing: -.02em; }
+.empty-state p { width: 360px; max-width: 80%; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.empty-actions { display: flex; gap: 7px; margin-top: 18px; }
+
+.floating-toolbar, .layout-toolbar { position: absolute; z-index: 8; display: flex; align-items: center; background: rgba(255,255,255,.95); border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(28,36,48,.09); }
+.floating-toolbar { left: 50%; bottom: 17px; transform: translateX(-50%); height: 39px; border-radius: 10px; padding: 4px; }
+.floating-toolbar button { width: 31px; height: 29px; color: #5c6571; padding: 0; }
+.floating-toolbar button:hover { background: #f0f2f5; color: var(--ink); }
+.floating-toolbar button.active { background: var(--ink); color: white; }
+.floating-toolbar button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.floating-toolbar > span { width: 1px; height: 21px; background: var(--line); margin: 0 4px; }
+.floating-toolbar .zoom-label { width: 46px; font-size: 9px; }
+.layout-toolbar { right: 14px; bottom: 17px; height: 39px; border-radius: 10px; padding: 3px; gap: 1px; }
+.compact-icon { width: 31px; height: 31px; font-size: 9px; color: var(--muted); }
+
+.context-menu { position: absolute; z-index: 50; min-width: 190px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 5px; }
+.context-menu button { width: 100%; height: 32px; display: flex; align-items: center; gap: 9px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; text-align: left; font-size: 11px; }
+.context-menu button:hover { background: #f2f4f6; }
+.context-menu button.danger-text { color: var(--red); }
+.context-menu button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.context-menu hr { height: 1px; border: 0; background: var(--line); margin: 4px; }
+
+.toast-region { position: absolute; z-index: 80; right: 15px; top: 15px; display: grid; gap: 8px; pointer-events: none; }
+.toast { min-width: 220px; max-width: 340px; display: flex; align-items: flex-start; gap: 9px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; box-shadow: 0 8px 24px rgba(28,36,48,.13); animation: toastIn .2s ease; pointer-events: auto; }
+.toast-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--green); margin-top: 4px; }
+.toast.error .toast-dot { background: var(--red); }
+.toast.warning .toast-dot { background: var(--amber); }
+.toast span { font-size: 11px; line-height: 1.4; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } }
+
+.properties-empty { min-height: 100%; padding: 0 34px 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.property-empty-icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; background: #f1f3f6; color: #a0a7b1; }
+.property-empty-icon svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.properties-empty h3 { margin: 14px 0 6px; font-size: 13px; }
+.properties-empty p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.shortcut-hint { margin-top: 20px; color: var(--muted-2); font-size: 9px; }
+kbd { font-family: inherit; }
+.shortcut-hint kbd { padding: 2px 5px; border: 1px solid var(--line-strong); border-radius: 4px; background: #f6f7f8; color: var(--muted); box-shadow: 0 1px 0 #d4d8de; }
+.properties-panel { min-height: 100%; }
+.property-header { position: sticky; top: 0; z-index: 4; padding: 18px 17px 14px; display: flex; align-items: flex-start; gap: 10px; background: rgba(255,255,255,.97); border-bottom: 1px solid var(--line); }
+.property-type-icon { width: 35px; height: 35px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; background: var(--cat-soft); color: var(--cat-color); font-weight: 800; }
+.property-heading { min-width: 0; flex: 1; }
+.property-heading h2 { margin: 1px 0 3px; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.property-heading span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.property-menu-button { width: 27px; height: 27px; }
+.property-body { padding: 4px 17px 24px; }
+.property-section { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.property-section:last-child { border-bottom: 0; }
+.property-section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; color: var(--muted); font-size: 9px; font-weight: 780; letter-spacing: .1em; text-transform: uppercase; }
+.field { margin-bottom: 10px; }
+.field:last-child { margin-bottom: 0; }
+.field > label { display: block; margin: 0 0 5px; color: #737b87; font-size: 10px; font-weight: 630; }
+.field input, .field textarea, .field select, .property-inline-input {
+  width: 100%; border: 1px solid var(--line); border-radius: 7px; background: #fff; padding: 7px 8px; outline: none; font-size: 11px; transition: border-color .15s, box-shadow .15s;
+}
+.field textarea { min-height: 64px; resize: vertical; line-height: 1.45; }
+.field input:focus, .field textarea:focus, .field select:focus, .property-inline-input:focus { border-color: #a8b8f4; box-shadow: 0 0 0 3px rgba(49,91,239,.08); }
+.field input[readonly] { background: #f6f7f8; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.tag-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 99px; background: #eef1f5; padding: 4px 7px; color: #59616d; font-size: 9px; }
+.tag-pill button { border: 0; background: transparent; padding: 0; color: #8b929c; font-size: 12px; line-height: 1; }
+.property-row { display: grid; grid-template-columns: 1fr 1fr 22px; gap: 5px; margin-bottom: 5px; align-items: center; }
+.property-row input { min-width: 0; padding: 6px; border: 1px solid var(--line); border-radius: 6px; font-size: 10px; outline: none; }
+.property-row button { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); }
+.property-row button:hover { color: var(--red); background: var(--red-soft); }
+.add-row-button { border: 0; background: transparent; color: var(--blue); padding: 3px 0; font-size: 10px; font-weight: 650; }
+.relation-list, .membership-list { display: grid; gap: 5px; }
+.relation-item, .membership-item { width: 100%; min-height: 37px; border: 1px solid var(--line); border-radius: 7px; background: #fff; padding: 6px 7px; display: flex; align-items: center; gap: 7px; text-align: left; }
+.relation-item:hover, .membership-item:hover { border-color: #bfc8e9; background: #fafbff; }
+.relation-direction { color: var(--blue); font-size: 13px; }
+.relation-copy { min-width: 0; flex: 1; }
+.relation-copy strong, .relation-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.relation-copy strong { font-size: 10px; }
+.relation-copy span { color: var(--muted); font-size: 8px; margin-top: 2px; }
+.membership-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+.property-actions { display: grid; gap: 6px; }
+.property-actions .button { width: 100%; }
+.danger-zone { color: var(--red); }
+
+.modal { width: min(480px, calc(100vw - 40px)); max-height: calc(100vh - 60px); padding: 0; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 24px 80px rgba(16,24,38,.25); overflow: hidden; }
+.modal::backdrop { background: rgba(26,32,44,.36); backdrop-filter: blur(2px); }
+.modal form { margin: 0; }
+.modal-header { min-height: 74px; padding: 17px 20px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.modal-header h2 { margin: 3px 0 0; font-size: 17px; letter-spacing: -.015em; }
+.modal-eyebrow { color: var(--blue); font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.modal-close { margin: -2px -4px 0 0; }
+.modal-body { padding: 18px 20px; max-height: calc(100vh - 210px); overflow: auto; }
+.modal-footer { min-height: 62px; padding: 12px 20px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); background: #fafbfc; }
+.modal-left-actions { margin-right: auto; display: flex; gap: 8px; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal .field { margin-bottom: 13px; }
+.modal .field input, .modal .field textarea, .modal .field select { padding: 9px 10px; font-size: 12px; }
+.modal .field textarea { min-height: 78px; }
+.modal-note { margin: 4px 0 14px; padding: 9px 11px; border-radius: 8px; background: var(--blue-soft); color: #4d5f9e; font-size: 10px; line-height: 1.45; }
+.similar-warning { margin: -4px 0 13px; padding: 9px 10px; border: 1px solid #f0d7ac; border-radius: 8px; background: #fff8e9; color: #875a19; font-size: 10px; line-height: 1.45; }
+.choice-row { display: flex; gap: 7px; }
+.choice-row label { flex: 1; }
+.choice-row input { position: absolute; opacity: 0; }
+.choice-card { height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 11px; font-weight: 650; cursor: pointer; }
+.choice-row input:checked + .choice-card { color: var(--blue); border-color: #9fb1f6; background: var(--blue-soft); box-shadow: inset 0 0 0 1px #c6d1ff; }
+.checkbox-list { max-height: 160px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 5px; }
+.checkbox-list label { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 7px; border-radius: 5px; font-size: 10px; }
+.checkbox-list label:hover { background: #f5f6f8; }
+.checkbox-list input { width: auto !important; }
+.object-picker { max-height: 300px; overflow: auto; display: grid; gap: 4px; }
+.object-pick-item { min-height: 50px; display: grid; grid-template-columns: 31px minmax(120px, 1fr) auto; align-items: center; gap: 8px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: white; cursor: pointer; }
+.object-pick-item:hover { border-color: #abbaf0; background: #fafbff; }
+.object-pick-item:has(input:checked) { border-color: #9fb1f6; background: var(--blue-soft); }
+.object-pick-icon { width: 29px; height: 29px; border-radius: 7px; display: grid; place-items: center; background: var(--cat-soft); color: var(--cat-color); font-size: 10px; font-weight: 800; }
+.object-pick-copy strong, .object-pick-copy span { display: block; }
+.object-pick-copy strong { font-size: 11px; }
+.object-pick-copy span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.object-pick-meta { display: flex; align-items: center; gap: 9px; }
+.object-pick-meta > input { width: 15px; height: 15px; margin: 0; accent-color: var(--blue); }
+.object-pick-views { max-width: 150px; display: flex; justify-content: flex-end; gap: 3px; overflow: hidden; }
+.object-view-chip { max-width: 72px; padding: 3px 6px; overflow: hidden; border-radius: 99px; background: #eef0f3; color: #69717d; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.object-view-chip.current { background: #dfe6ff; color: var(--blue); }
+.object-view-chip.orphan { background: #fff2df; color: var(--amber); }
+.object-view-more { align-self: center; color: var(--muted); font-size: 8px; }
+.report-modal { width: min(600px, calc(100vw - 40px)); }
+.report-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+.report-summary > div { padding: 12px; border: 1px solid var(--line); border-radius: 9px; }
+.report-summary strong, .report-summary span { display: block; }
+.report-summary strong { font-size: 20px; }
+.report-summary span { color: var(--muted); font-size: 9px; margin-top: 3px; }
+.report-group { margin-top: 16px; }
+.report-group h3 { margin: 0 0 7px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.report-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 9px; border-radius: 6px; margin-bottom: 3px; background: #f7f8fa; font-size: 10px; line-height: 1.4; }
+.report-item::before { content: ''; width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--blue); margin-top: 4px; }
+.report-group.errors .report-item { background: var(--red-soft); }
+.report-group.errors .report-item::before { background: var(--red); }
+.report-group.warnings .report-item { background: #fff7e8; }
+.report-group.warnings .report-item::before { background: var(--amber); }
+.confirm-modal { width: min(430px, calc(100vw - 40px)); }
+.danger-header { justify-content: flex-start; gap: 12px; }
+.danger-symbol { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; background: var(--red-soft); color: var(--red); }
+.danger-symbol svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.confirm-modal .modal-body { color: #5f6773; font-size: 12px; line-height: 1.55; }
+
+@media (max-width: 1180px) {
+  .workspace { grid-template-columns: 210px minmax(450px, 1fr) 265px; }
+  .topbar { grid-template-columns: minmax(220px, .7fr) minmax(260px, 1fr) auto; gap: 12px; }
+  .top-actions .button.secondary:first-of-type, #validateBtn { display: none; }
+  .view-meta { display: none; }
+}
+
+@media (max-width: 1000px) {
+  .workspace { grid-template-columns: 190px minmax(440px, 1fr) 250px; }
+  .project-name { max-width: 150px; }
+  .brand-label { display: none; }
+  .topbar { padding-left: 14px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div class="brand-cluster">
+        <div class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="project-identity">
+          <div class="project-row">
+            <button id="projectName" class="project-name" title="Edit project details">Untitled Architecture</button>
+            <span id="dirtyStatus" class="status-badge local">Saved locally</span>
+          </div>
+          <div class="brand-label">ARCHITECTURE GRAPH</div>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <svg class="search-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+        <input id="globalSearch" type="search" autocomplete="off" placeholder="Search objects, IDs, tags, properties…" aria-label="Search architecture objects">
+        <kbd id="searchShortcutHint">Ctrl K</kbd>
+        <div id="searchResults" class="search-results hidden"></div>
+      </div>
+
+      <nav class="top-actions" aria-label="Project actions">
+        <button id="undoBtn" class="icon-button" title="Undo (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 24 24"><path d="m9 7-4 4 4 4"></path><path d="M5 11h8a6 6 0 0 1 6 6"></path></svg>
+        </button>
+        <button id="redoBtn" class="icon-button" title="Redo (Ctrl+Shift+Z)" disabled>
+          <svg viewBox="0 0 24 24"><path d="m15 7 4 4-4 4"></path><path d="M19 11h-8a6 6 0 0 0-6 6"></path></svg>
+        </button>
+        <span class="action-divider"></span>
+        <button id="newProjectBtn" class="button secondary">New</button>
+        <button id="openProjectBtn" class="button secondary">
+          <svg viewBox="0 0 24 24"><path d="M4 18.5V7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9.5"></path><path d="M3 18.5 5 11h16l-2 7.5z"></path></svg>
+          Open
+        </button>
+        <input id="projectFileInput" type="file" accept=".json,.arch.json,application/json" hidden>
+        <button id="validateBtn" class="button secondary">Validate</button>
+        <button id="exportBtn" class="button primary">
+          <svg viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="m8 11 4 4 4-4"></path><path d="M5 20h14"></path></svg>
+          Export
+        </button>
+      </nav>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar left-sidebar">
+        <section class="sidebar-section views-section">
+          <div class="section-heading">
+            <span>Views</span>
+            <button id="newViewBtn" class="mini-icon-button" title="Create view" aria-label="Create view">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
+            </button>
+          </div>
+          <div id="viewList" class="view-list"></div>
+        </section>
+
+        <section class="sidebar-section layer-section">
+          <div class="section-heading"><span>Layers</span></div>
+          <div id="layerFilters" class="layer-filters"></div>
+        </section>
+
+        <section class="sidebar-section overview-section">
+          <div class="section-heading"><span>Project overview</span></div>
+          <div class="stat-grid">
+            <div><strong id="nodeCount">0</strong><span>Objects</span></div>
+            <div><strong id="edgeCount">0</strong><span>Relations</span></div>
+            <div><strong id="viewCount">0</strong><span>Views</span></div>
+          </div>
+          <div id="categoryBars" class="category-bars"></div>
+          <div id="healthLine" class="health-line"></div>
+        </section>
+
+        <div class="sidebar-footer">
+          <span><span class="local-dot"></span> Browser-local workspace</span>
+          <button id="helpBtn" class="plain-button">Help</button>
+        </div>
+      </aside>
+
+      <section class="canvas-panel" aria-label="Graph canvas">
+        <div class="canvas-topline">
+          <div class="view-heading-wrap">
+            <button id="viewMenuBtn" class="view-title-button" title="View options">
+              <span id="activeViewName">Default</span>
+              <svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"></path></svg>
+            </button>
+            <span id="viewMeta" class="view-meta">0 objects · 0 relationships</span>
+          </div>
+          <div class="canvas-actions">
+            <button id="addExistingBtn" class="button canvas-button">
+              <svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3"></circle><path d="M4.5 19a5.5 5.5 0 0 1 11 0M18 8v6M15 11h6"></path></svg>
+              Browse existing
+            </button>
+            <button id="addObjectBtn" class="button dark">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
+              New object
+            </button>
+          </div>
+        </div>
+
+        <div id="canvasViewport" class="canvas-viewport" tabindex="0">
+          <svg id="graphCanvas" class="graph-canvas" xmlns="http://www.w3.org/2000/svg" aria-label="Architecture graph">
+            <defs>
+              <pattern id="dotGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+                <circle cx="1.2" cy="1.2" r="1.05" fill="#c9ced6"></circle>
+              </pattern>
+              <marker id="arrowDefault" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#8a929f"></path>
+              </marker>
+              <marker id="arrowSelected" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#315bef"></path>
+              </marker>
+              <filter id="nodeShadow" x="-20%" y="-20%" width="140%" height="160%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#15233a" flood-opacity=".12"></feDropShadow>
+              </filter>
+            </defs>
+            <rect id="canvasGrid" class="canvas-grid" x="-5000" y="-5000" width="10000" height="10000" fill="url(#dotGrid)"></rect>
+            <g id="viewportGroup">
+              <g id="edgeLayer"></g>
+              <g id="nodeLayer"></g>
+              <g id="interactionLayer"></g>
+            </g>
+          </svg>
+
+          <div id="emptyState" class="empty-state hidden">
+            <div class="empty-illustration" aria-hidden="true">
+              <span class="empty-node n1"></span><span class="empty-node n2"></span><span class="empty-node n3"></span>
+              <svg viewBox="0 0 240 130"><path d="M55 72 C90 20 140 26 178 62"></path><path d="M64 82 C106 118 151 112 184 80"></path></svg>
+            </div>
+            <h2>Map your architecture</h2>
+            <p>Create a canonical object here, or reuse an object that already exists in your project.</p>
+            <div class="empty-actions">
+              <button id="emptyAddObject" class="button dark">Create first object</button>
+              <button id="emptyAddExisting" class="button secondary">Browse existing</button>
+            </div>
+          </div>
+
+          <div class="floating-toolbar" aria-label="Canvas controls">
+            <button id="selectTool" class="active" title="Select (V)">
+              <svg viewBox="0 0 24 24"><path d="m5 3 13 9-6 1-3 6z"></path></svg>
+            </button>
+            <button id="lassoTool" title="Lasso select (L)">
+              <svg viewBox="0 0 24 24"><rect x="4" y="4" width="13" height="13" rx="2" stroke-dasharray="3 2"></rect><path d="m14 13 6 4-3 1-1 3z"></path></svg>
+            </button>
+            <button id="connectTool" title="Create relationship (C)">
+              <svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="3"></circle><circle cx="18" cy="7" r="3"></circle><path d="m8.5 15.3 7-6.5"></path></svg>
+            </button>
+            <span></span>
+            <button id="zoomOutBtn" title="Zoom out">
+              <svg viewBox="0 0 24 24"><path d="M6 12h12"></path></svg>
+            </button>
+            <button id="zoomLabel" class="zoom-label" title="Reset zoom">100%</button>
+            <button id="zoomInBtn" title="Zoom in">
+              <svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"></path></svg>
+            </button>
+            <button id="fitBtn" title="Fit to screen">
+              <svg viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"></path></svg>
+            </button>
+          </div>
+
+          <div class="layout-toolbar">
+            <button id="autoArrangeBtn" class="button compact">
+              <svg viewBox="0 0 24 24"><rect x="3" y="4" width="6" height="5" rx="1"></rect><rect x="15" y="15" width="6" height="5" rx="1"></rect><path d="M9 6.5h4a4 4 0 0 1 4 4V15"></path></svg>
+              Auto arrange
+            </button>
+            <button id="layoutDirectionBtn" class="icon-button compact-icon" title="Layout direction">LR</button>
+          </div>
+
+          <div id="contextMenu" class="context-menu hidden"></div>
+          <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar right-sidebar">
+        <div id="propertiesEmpty" class="properties-empty">
+          <div class="property-empty-icon">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 9h8M8 13h5M8 17h7"></path></svg>
+          </div>
+          <h3>Nothing selected</h3>
+          <p>Select an object or relationship to inspect and edit its properties.</p>
+          <div class="shortcut-hint"><kbd>Shift</kbd> + click to multi-select</div>
+        </div>
+        <div id="propertiesPanel" class="properties-panel hidden"></div>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="formDialog" class="modal">
+    <form method="dialog" id="modalForm">
+      <div class="modal-header">
+        <div><span id="modalEyebrow" class="modal-eyebrow"></span><h2 id="modalTitle"></h2></div>
+        <button value="cancel" formnovalidate class="modal-close icon-button" aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <div id="modalLeftActions" class="modal-left-actions"></div>
+        <button value="cancel" formnovalidate class="button secondary">Cancel</button>
+        <button id="modalSubmit" value="default" class="button primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="reportDialog" class="modal report-modal">
+    <div class="modal-header">
+      <div><span class="modal-eyebrow">Project health</span><h2>Validation report</h2></div>
+      <button id="reportClose" class="modal-close icon-button" aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
+    </div>
+    <div id="reportBody" class="modal-body"></div>
+    <div class="modal-footer"><button id="reportDone" class="button primary">Done</button></div>
+  </dialog>
+
+  <dialog id="confirmDialog" class="modal confirm-modal">
+    <div class="modal-header danger-header">
+      <div class="danger-symbol"><svg viewBox="0 0 24 24"><path d="M12 3 2.8 19a1.3 1.3 0 0 0 1.1 2h16.2a1.3 1.3 0 0 0 1.1-2z"></path><path d="M12 9v5M12 17.5v.1"></path></svg></div>
+      <div><span id="confirmEyebrow" class="modal-eyebrow">Confirm action</span><h2 id="confirmTitle">Are you sure?</h2></div>
+    </div>
+    <div id="confirmBody" class="modal-body"></div>
+    <div class="modal-footer">
+      <button id="confirmCancel" class="button secondary">Cancel</button>
+      <button id="confirmAction" class="button danger">Delete</button>
+    </div>
+  </dialog>
+
+  <script>
+(function (global) {
+  'use strict';
+
+  const SCHEMA_VERSION = 1;
+
+  const DEFAULT_NODE_TYPES = [
+    ['person', 'Person', 'people'],
+    ['role', 'Role', 'people'],
+    ['team', 'Team', 'people'],
+    ['organization', 'Organization', 'people'],
+    ['capability', 'Capability', 'operational'],
+    ['function', 'Function', 'operational'],
+    ['service', 'Service', 'logical'],
+    ['application', 'Application', 'logical'],
+    ['logical_component', 'Logical Component', 'logical'],
+    ['system', 'System', 'physical'],
+    ['device', 'Device', 'physical'],
+    ['server', 'Server', 'physical'],
+    ['network', 'Network', 'physical'],
+    ['gateway', 'Gateway', 'physical'],
+    ['interface', 'Interface', 'physical'],
+    ['facility', 'Facility', 'physical'],
+    ['data_type', 'Data Type', 'data'],
+    ['data_store', 'Data Store', 'data'],
+    ['message', 'Message', 'data'],
+    ['stream', 'Stream', 'data']
+  ].map(([id, name, category]) => ({ id, name, category }));
+
+  const EDGE_NAMES = {
+    depends_on: 'Depends on', part_of: 'Part of', contains: 'Contains',
+    provides: 'Provides', consumes: 'Consumes', implements: 'Implements',
+    connected_to: 'Connected to', hosted_on: 'Hosted on', runs_on: 'Runs on',
+    sends: 'Sends', receives: 'Receives', owns: 'Owns', manages: 'Manages',
+    operates: 'Operates', supports: 'Supports', requires: 'Requires',
+    interfaces_with: 'Interfaces with'
+  };
+
+  const DEFAULT_EDGE_TYPES = Object.entries(EDGE_NAMES).map(([id, name]) => ({
+    id,
+    name,
+    direction: ['connected_to', 'interfaces_with'].includes(id) ? 'undirected' : 'directed'
+  }));
+
+  const DEFAULT_VIEWS = [
+    ['view.overview', 'Default', []]
+  ];
+
+  function slugify(value, fallback = 'item') {
+    const slug = String(value || '').normalize('NFKD').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return slug || fallback;
+  }
+
+  function uniqueId(prefix, name, existingIds) {
+    const ids = new Set(existingIds || []);
+    const base = `${prefix}.${slugify(name)}`;
+    if (!ids.has(base)) return base;
+    let suffix = 2;
+    while (ids.has(`${base}-${suffix}`)) suffix += 1;
+    return `${base}-${suffix}`;
+  }
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function compareIds(a, b) {
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  }
+
+  function createEmptyProject(name = 'Untitled Architecture') {
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      project: {
+        id: `project.${slugify(name, 'untitled-architecture')}`,
+        name,
+        description: ''
+      },
+      nodeTypes: clone(DEFAULT_NODE_TYPES),
+      edgeTypes: clone(DEFAULT_EDGE_TYPES),
+      nodes: [],
+      edges: [],
+      views: DEFAULT_VIEWS.map(([id, viewName, categories]) => ({
+        id,
+        name: viewName,
+        description: '',
+        filter: categories.length ? { categories } : {},
+        nodes: [],
+        edges: []
+      }))
+    };
+  }
+
+  function sortObject(value) {
+    if (Array.isArray(value)) return value.map(sortObject);
+    if (!value || typeof value !== 'object') return value;
+    return Object.keys(value).sort().reduce((result, key) => {
+      result[key] = sortObject(value[key]);
+      return result;
+    }, {});
+  }
+
+  function text(value) {
+    return typeof value === 'string' ? value : '';
+  }
+
+  function normalizeNodeType(type) {
+    return {
+      id: text(type.id),
+      name: text(type.name),
+      category: text(type.category) || 'logical'
+    };
+  }
+
+  function normalizeEdgeType(type) {
+    const normalized = {
+      id: text(type.id),
+      name: text(type.name),
+      direction: type.direction === 'undirected' ? 'undirected' : 'directed'
+    };
+    if (type.visual && Object.keys(type.visual).length) normalized.visual = sortObject(type.visual);
+    return normalized;
+  }
+
+  function normalizeNode(node) {
+    return {
+      id: text(node.id),
+      type: text(node.type),
+      name: text(node.name),
+      description: text(node.description),
+      tags: [...new Set(Array.isArray(node.tags) ? node.tags.map(String).filter(Boolean) : [])].sort(),
+      properties: sortObject(node.properties && typeof node.properties === 'object' && !Array.isArray(node.properties) ? node.properties : {})
+    };
+  }
+
+  function normalizeEdge(edge) {
+    return {
+      id: text(edge.id),
+      source: text(edge.source),
+      target: text(edge.target),
+      type: text(edge.type),
+      description: text(edge.description),
+      properties: sortObject(edge.properties && typeof edge.properties === 'object' && !Array.isArray(edge.properties) ? edge.properties : {})
+    };
+  }
+
+  function normalizeViewNode(record) {
+    const x = Number(record.x);
+    const y = Number(record.y);
+    return {
+      nodeId: text(record.nodeId),
+      x: Number.isFinite(x) ? Math.round(x) : 0,
+      y: Number.isFinite(y) ? Math.round(y) : 0,
+      ...(record.hidden === true ? { hidden: true } : {})
+    };
+  }
+
+  function normalizeFilter(filter) {
+    const normalized = sortObject(filter && typeof filter === 'object' && !Array.isArray(filter) ? filter : {});
+    for (const key of ['categories', 'nodeTypes', 'edgeTypes', 'tags']) {
+      if (Array.isArray(normalized[key])) normalized[key] = [...new Set(normalized[key].map(String))].sort();
+    }
+    return normalized;
+  }
+
+  function normalizeView(view) {
+    const result = {
+      id: text(view.id),
+      name: text(view.name),
+      description: text(view.description),
+      filter: normalizeFilter(view.filter),
+      nodes: (Array.isArray(view.nodes) ? view.nodes : []).map(normalizeViewNode).sort((a, b) => a.nodeId < b.nodeId ? -1 : a.nodeId > b.nodeId ? 1 : 0),
+      edges: [...new Set(Array.isArray(view.edges) ? view.edges.map(String) : [])].sort()
+    };
+    return result;
+  }
+
+  function normalizeProject(input) {
+    const data = input || {};
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      project: {
+        id: text(data.project && data.project.id),
+        name: text(data.project && data.project.name),
+        description: text(data.project && data.project.description)
+      },
+      nodeTypes: (Array.isArray(data.nodeTypes) ? data.nodeTypes : []).map(normalizeNodeType).sort(compareIds),
+      edgeTypes: (Array.isArray(data.edgeTypes) ? data.edgeTypes : []).map(normalizeEdgeType).sort(compareIds),
+      nodes: (Array.isArray(data.nodes) ? data.nodes : []).map(normalizeNode).sort(compareIds),
+      edges: (Array.isArray(data.edges) ? data.edges : []).map(normalizeEdge).sort(compareIds),
+      views: (Array.isArray(data.views) ? data.views : []).map(normalizeView).sort(compareIds)
+    };
+  }
+
+  function canonicalSerialize(project) {
+    return `${canonicalStringify(normalizeProject(project))}\n`;
+  }
+
+  const KEY_ORDERS = {
+    '$': ['schemaVersion', 'project', 'nodeTypes', 'edgeTypes', 'nodes', 'edges', 'views'],
+    '$.project': ['id', 'name', 'description'],
+    '$.nodeTypes[]': ['id', 'name', 'category'],
+    '$.edgeTypes[]': ['id', 'name', 'direction', 'visual'],
+    '$.nodes[]': ['id', 'type', 'name', 'description', 'tags', 'properties'],
+    '$.edges[]': ['id', 'source', 'target', 'type', 'description', 'properties'],
+    '$.views[]': ['id', 'name', 'description', 'filter', 'nodes', 'edges'],
+    '$.views[].nodes[]': ['nodeId', 'x', 'y', 'hidden']
+  };
+
+  function canonicalStringify(value, level = 0, path = '$') {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value);
+    const indent = '  '.repeat(level);
+    const childIndent = '  '.repeat(level + 1);
+    if (Array.isArray(value)) {
+      if (!value.length) return '[]';
+      return `[\n${value.map(item => `${childIndent}${canonicalStringify(item, level + 1, `${path}[]`)}`).join(',\n')}\n${indent}]`;
+    }
+    const preferred = KEY_ORDERS[path] || [];
+    const available = new Set(Object.keys(value));
+    const keys = [...preferred.filter(key => available.delete(key)), ...[...available].sort()];
+    if (!keys.length) return '{}';
+    return `{\n${keys.map(key => `${childIndent}${JSON.stringify(key)}: ${canonicalStringify(value[key], level + 1, `${path}.${key}`)}`).join(',\n')}\n${indent}}`;
+  }
+
+  function migrate(data) {
+    if (!data || typeof data !== 'object') throw new Error('The project file must contain a JSON object.');
+    if (data.schemaVersion !== SCHEMA_VERSION) {
+      throw new Error(`Unsupported schemaVersion ${JSON.stringify(data.schemaVersion)}. This app supports version ${SCHEMA_VERSION}.`);
+    }
+    return data;
+  }
+
+  function duplicates(items) {
+    const seen = new Set();
+    return items.map(item => item && item.id).filter(id => {
+      if (!id || seen.has(id)) return seen.has(id);
+      seen.add(id);
+      return false;
+    });
+  }
+
+  function dependencyCycles(project) {
+    const relevant = new Set(['depends_on', 'requires']);
+    const adjacency = new Map(project.nodes.map(node => [node.id, []]));
+    project.edges.filter(edge => relevant.has(edge.type)).forEach(edge => {
+      if (adjacency.has(edge.source)) adjacency.get(edge.source).push(edge.target);
+    });
+    const color = new Map();
+    const stack = [];
+    const found = new Set();
+    function visit(id) {
+      color.set(id, 1);
+      stack.push(id);
+      for (const next of adjacency.get(id) || []) {
+        if (!color.get(next)) visit(next);
+        else if (color.get(next) === 1) {
+          const start = stack.indexOf(next);
+          if (start >= 0) found.add([...stack.slice(start), next].join(' → '));
+        }
+      }
+      stack.pop();
+      color.set(id, 2);
+    }
+    adjacency.forEach((_, id) => { if (!color.get(id)) visit(id); });
+    return [...found].sort();
+  }
+
+  function validateProject(input) {
+    const errors = [];
+    const warnings = [];
+    const info = [];
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return { errors: ['Project must be a JSON object.'], warnings, info, cycles: [] };
+    }
+    if (input.schemaVersion !== SCHEMA_VERSION) errors.push(`schemaVersion must be ${SCHEMA_VERSION}.`);
+    if (!input.project || !input.project.id) errors.push('Project ID is required.');
+    if (!input.project || !input.project.name) errors.push('Project name is required.');
+    for (const key of ['nodeTypes', 'edgeTypes', 'nodes', 'edges', 'views']) {
+      if (!Array.isArray(input[key])) errors.push(`${key} must be an array.`);
+    }
+    if (errors.some(message => message.endsWith('must be an array.'))) return { errors, warnings, info, cycles: [] };
+
+    for (const [label, items] of [['node type', input.nodeTypes], ['edge type', input.edgeTypes], ['node', input.nodes], ['edge', input.edges], ['view', input.views]]) {
+      const duplicateIds = duplicates(items);
+      if (duplicateIds.length) errors.push(`Duplicate ${label} ID${duplicateIds.length > 1 ? 's' : ''}: ${[...new Set(duplicateIds)].join(', ')}.`);
+      items.forEach((item, index) => { if (!item || !item.id) errors.push(`${label} at index ${index} has no ID.`); });
+    }
+
+    const nodeIds = new Set(input.nodes.map(node => node.id));
+    const nodeTypeIds = new Set(input.nodeTypes.map(type => type.id));
+    const edgeTypeIds = new Set(input.edgeTypes.map(type => type.id));
+    input.nodes.forEach(node => {
+      if (!node.name) warnings.push(`Node ${node.id || '(unknown)'} has no name.`);
+      if (!nodeTypeIds.has(node.type)) errors.push(`Node ${node.id} references unknown type ${node.type}.`);
+      if (!node.description) info.push(`Node ${node.id} has no description.`);
+    });
+    input.edges.forEach(edge => {
+      if (!nodeIds.has(edge.source)) errors.push(`Edge ${edge.id} has missing source ${edge.source}.`);
+      if (!nodeIds.has(edge.target)) errors.push(`Edge ${edge.id} has missing target ${edge.target}.`);
+      if (!edgeTypeIds.has(edge.type)) errors.push(`Edge ${edge.id} references unknown type ${edge.type}.`);
+    });
+    const usedNodes = new Set();
+    input.views.forEach(view => {
+      const memberIds = new Set();
+      (view.nodes || []).forEach(record => {
+        if (memberIds.has(record.nodeId)) errors.push(`View ${view.id} contains node ${record.nodeId} more than once.`);
+        memberIds.add(record.nodeId);
+        usedNodes.add(record.nodeId);
+        if (!nodeIds.has(record.nodeId)) errors.push(`View ${view.id} references missing node ${record.nodeId}.`);
+      });
+    });
+    const orphanNodes = input.nodes.filter(node => !usedNodes.has(node.id));
+    if (orphanNodes.length) warnings.push(`${orphanNodes.length} object${orphanNodes.length === 1 ? '' : 's'} appear in no views.`);
+    const names = new Map();
+    input.nodes.forEach(node => names.set(String(node.name).toLowerCase(), (names.get(String(node.name).toLowerCase()) || 0) + 1));
+    const duplicateNames = [...names.entries()].filter(([, count]) => count > 1).map(([name]) => name);
+    if (duplicateNames.length) warnings.push(`Duplicate object names: ${duplicateNames.join(', ')}.`);
+    const cycles = dependencyCycles(input);
+    if (cycles.length) warnings.push(`${cycles.length} dependency cycle${cycles.length === 1 ? '' : 's'} detected.`);
+    info.unshift(`${input.nodes.length} objects, ${input.edges.length} relationships, ${input.views.length} views.`);
+    return { errors, warnings, info, cycles };
+  }
+
+  function parseProject(source) {
+    if (/^(<{7}|={7}|>{7})/m.test(source)) {
+      throw new Error('This file contains unresolved Git merge conflicts. Resolve the conflict before importing the project.');
+    }
+    let parsed;
+    try { parsed = JSON.parse(source); }
+    catch (error) { throw new Error(`Invalid JSON: ${error.message}`); }
+    const migrated = migrate(parsed);
+    const report = validateProject(migrated);
+    if (report.errors.length) throw new Error(`Project validation failed:\n• ${report.errors.join('\n• ')}`);
+    return normalizeProject(migrated);
+  }
+
+  function dependencyTraversal(project, startId, options = {}) {
+    const direction = options.direction || 'both';
+    const depth = options.depth === 'all' ? Infinity : Math.max(1, Number(options.depth) || 1);
+    const allowedTypes = options.types && options.types.length ? new Set(options.types) : null;
+    const visited = new Set([startId]);
+    const edgeIds = new Set();
+    let frontier = [startId];
+    let hop = 0;
+    while (frontier.length && hop < depth) {
+      const next = [];
+      project.edges.forEach(edge => {
+        if (allowedTypes && !allowedTypes.has(edge.type)) return;
+        let candidate = null;
+        if ((direction === 'downstream' || direction === 'both') && frontier.includes(edge.source)) candidate = edge.target;
+        if ((direction === 'upstream' || direction === 'both') && frontier.includes(edge.target)) candidate = edge.source;
+        if (candidate) {
+          edgeIds.add(edge.id);
+          if (!visited.has(candidate)) { visited.add(candidate); next.push(candidate); }
+        }
+      });
+      frontier = next;
+      hop += 1;
+    }
+    return { nodeIds: [...visited].sort(), edgeIds: [...edgeIds].sort() };
+  }
+
+  function projectStats(project) {
+    const typeMap = new Map(project.nodeTypes.map(type => [type.id, type.category]));
+    const categories = { people: 0, operational: 0, logical: 0, physical: 0, data: 0 };
+    project.nodes.forEach(node => {
+      const category = typeMap.get(node.type) || 'logical';
+      categories[category] = (categories[category] || 0) + 1;
+    });
+    const membership = new Set(project.views.flatMap(view => (view.nodes || []).map(record => record.nodeId)));
+    return {
+      nodes: project.nodes.length,
+      edges: project.edges.length,
+      views: project.views.length,
+      categories,
+      orphans: project.nodes.filter(node => !membership.has(node.id)).length,
+      cycles: dependencyCycles(project).length
+    };
+  }
+
+  const api = {
+    SCHEMA_VERSION, DEFAULT_NODE_TYPES, DEFAULT_EDGE_TYPES, DEFAULT_VIEWS,
+    slugify, uniqueId, clone, createEmptyProject, normalizeProject,
+    canonicalSerialize, validateProject, parseProject, dependencyTraversal,
+    dependencyCycles, projectStats
+  };
+
+  global.ArchitectureCore = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script>
 (function () {
   'use strict';
 
@@ -1435,5 +2432,30 @@
     }
   }
 
-  initialize();
+  const coreTestMode = new URLSearchParams(window.location.search).has('core-test');
+  if (coreTestMode) {
+    window.addEventListener('message', event => {
+      const request = event.data;
+      if (!request || request.type !== 'architecture-core-test-request' || !request.id) return;
+      try {
+        const method = Core && Core[request.method];
+        if (typeof method !== 'function') throw new Error(`Unknown ArchitectureCore method: ${request.method}`);
+        const result = method(...(Array.isArray(request.args) ? request.args : []));
+        event.source.postMessage({ type: 'architecture-core-test-response', id: request.id, ok: true, result }, '*');
+      } catch (error) {
+        event.source.postMessage({
+          type: 'architecture-core-test-response',
+          id: request.id,
+          ok: false,
+          error: { name: error.name || 'Error', message: error.message || String(error), stack: error.stack || '' }
+        }, '*');
+      }
+    });
+  } else {
+    initialize();
+  }
 })();
+
+  </script>
+</body>
+</html>
