@@ -2,7 +2,7 @@
   'use strict';
 
   const Core = window.ArchitectureCore;
-  const NODE_W = 184;
+  const NODE_MIN_W = 184;
   const NODE_H = 72;
   const CATEGORIES = ['people', 'operational', 'logical', 'physical', 'data'];
   const CATEGORY_LABELS = { people: 'People', operational: 'Operational', logical: 'Logical', physical: 'Physical', data: 'Data' };
@@ -12,6 +12,8 @@
   };
 
   const $ = id => document.getElementById(id);
+  const textMeasureContext = document.createElement('canvas').getContext('2d');
+  const textWidthCache = new Map();
   const els = {
     projectName: $('projectName'), dirtyStatus: $('dirtyStatus'), globalSearch: $('globalSearch'), searchShortcutHint: $('searchShortcutHint'), searchResults: $('searchResults'),
     undoBtn: $('undoBtn'), redoBtn: $('redoBtn'), newProjectBtn: $('newProjectBtn'), openProjectBtn: $('openProjectBtn'),
@@ -74,6 +76,21 @@
   }
   function iconLetter(node) { return (typeName(node).match(/[A-Z]/g) || [typeName(node)[0] || '?']).slice(0, 2).join(''); }
   function currentCanonical() { return Core.canonicalSerialize(state.project); }
+  function measureTextWidth(value, font) {
+    const key = `${font}\u0000${value}`;
+    if (!textWidthCache.has(key)) {
+      textMeasureContext.font = font;
+      textWidthCache.set(key, textMeasureContext.measureText(String(value)).width);
+    }
+    return textWidthCache.get(key);
+  }
+  function nodeWidth(node) {
+    if (!node) return NODE_MIN_W;
+    const nameWidth = measureTextWidth(node.name, '700 12px Inter, "Segoe UI", sans-serif');
+    const typeWidth = measureTextWidth(typeName(node), '600 10px Inter, "Segoe UI", sans-serif');
+    const tagWidth = node.tags && node.tags.length ? 54 : 0;
+    return Math.max(NODE_MIN_W, Math.ceil(88 + nameWidth), Math.ceil(88 + typeWidth + tagWidth));
+  }
 
   class WorkspaceRepository {
     async open() {
@@ -383,13 +400,15 @@
   }
 
   function shortestPortRoute(source, target) {
-    const sourceCenter = { x: source.x + NODE_W / 2, y: source.y + NODE_H / 2 };
-    const targetCenter = { x: target.x + NODE_W / 2, y: target.y + NODE_H / 2 };
+    const sourceWidth = nodeWidth(nodeById(source.nodeId));
+    const targetWidth = nodeWidth(nodeById(target.nodeId));
+    const sourceCenter = { x: source.x + sourceWidth / 2, y: source.y + NODE_H / 2 };
+    const targetCenter = { x: target.x + targetWidth / 2, y: target.y + NODE_H / 2 };
     const targetIsRight = targetCenter.x >= sourceCenter.x;
     const targetIsBelow = targetCenter.y >= sourceCenter.y;
     const horizontal = {
-      start: { x: source.x + (targetIsRight ? NODE_W : 0), y: sourceCenter.y },
-      end: { x: target.x + (targetIsRight ? 0 : NODE_W), y: targetCenter.y },
+      start: { x: source.x + (targetIsRight ? sourceWidth : 0), y: sourceCenter.y },
+      end: { x: target.x + (targetIsRight ? 0 : targetWidth), y: targetCenter.y },
       sourceDirection: targetIsRight ? 1 : -1,
       targetDirection: targetIsRight ? -1 : 1
     };
@@ -416,7 +435,7 @@
       const [x0, y0, x1, y1, x2, y2, x3, y3] = numbers;
       return { x: (x0 + 3*x1 + 3*x2 + x3) / 8, y: (y0 + 3*y1 + 3*y2 + y3) / 8 };
     }
-    return { x: (source.x + target.x + NODE_W) / 2, y: (source.y + target.y + NODE_H) / 2 };
+    return { x: (source.x + nodeWidth(nodeById(source.nodeId)) / 2 + target.x + nodeWidth(nodeById(target.nodeId)) / 2) / 2, y: (source.y + target.y + NODE_H) / 2 };
   }
 
   function renderNodeSvg(node, record) {
@@ -425,18 +444,17 @@
     const [color, soft] = CATEGORY_COLORS[category] || CATEGORY_COLORS.logical;
     const selected = state.selectedNodeIds.has(node.id);
     const tag = node.tags && node.tags[0];
-    const safeName = node.name.length > 25 ? `${node.name.slice(0, 24)}…` : node.name;
-    const safeType = typeName(node).length > 23 ? `${typeName(node).slice(0, 22)}…` : typeName(node);
-    const tagSvg = tag ? `<rect class="node-tag-bg" x="${NODE_W - 57}" y="46" width="45" height="15" rx="7"></rect><text class="node-tag-text" x="${NODE_W - 34.5}" y="54">${escapeHtml(tag.length > 8 ? `${tag.slice(0, 7)}…` : tag)}</text>` : '';
+    const width = nodeWidth(node);
+    const tagSvg = tag ? `<rect class="node-tag-bg" x="${width - 57}" y="46" width="45" height="15" rx="7"></rect><text class="node-tag-text" x="${width - 34.5}" y="54">${escapeHtml(tag.length > 8 ? `${tag.slice(0, 7)}…` : tag)}</text>` : '';
     return `<g class="graph-node ${selected ? 'selected' : ''} ${state.connectSourceId === node.id ? 'connect-source' : ''}" data-node-id="${attr(node.id)}" transform="translate(${record.x} ${record.y})" style="--cat-color:${color};--cat-soft:${soft}">
-      <rect class="node-body" width="${NODE_W}" height="${NODE_H}" rx="10"></rect>
+      <rect class="node-body" width="${width}" height="${NODE_H}" rx="10"></rect>
       <path class="node-accent" d="M10 0h4v72h-4A10 10 0 0 1 0 62V10A10 10 0 0 1 10 0z"></path>
       <rect class="node-icon-bg" x="23" y="17" width="36" height="36" rx="9"></rect>
       <text class="node-icon-glyph" x="41" y="35">${escapeHtml(iconLetter(node))}</text>
-      <text class="node-name" x="70" y="30">${escapeHtml(safeName)}</text>
-      <text class="node-type" x="70" y="48">${escapeHtml(safeType)}</text>
+      <text class="node-name" x="70" y="30">${escapeHtml(node.name)}</text>
+      <text class="node-type" x="70" y="48">${escapeHtml(typeName(node))}</text>
       ${tagSvg}
-      <circle class="node-handle" cx="${NODE_W}" cy="${NODE_H / 2}" r="4"></circle>
+      <circle class="node-handle" cx="${width}" cy="${NODE_H / 2}" r="4"></circle>
       <circle class="node-handle" cx="0" cy="${NODE_H / 2}" r="4"></circle>
     </g>`;
   }
@@ -768,7 +786,7 @@
     const rect = els.canvasViewport.getBoundingClientRect();
     const minX = Math.min(...records.map(record => record.x));
     const minY = Math.min(...records.map(record => record.y));
-    const maxX = Math.max(...records.map(record => record.x + NODE_W));
+    const maxX = Math.max(...records.map(record => record.x + nodeWidth(nodeById(record.nodeId))));
     const maxY = Math.max(...records.map(record => record.y + NODE_H));
     const width = Math.max(1, maxX - minX); const height = Math.max(1, maxY - minY);
     state.zoom = Math.min(1.25, Math.max(.3, Math.min((rect.width - 130) / width, (rect.height - 130) / height)));
@@ -782,7 +800,7 @@
     const record = activeView().nodes.find(item => item.nodeId === id);
     if (!record) return;
     const rect = els.canvasViewport.getBoundingClientRect();
-    state.pan = { x: rect.width / 2 - (record.x + NODE_W / 2) * state.zoom, y: rect.height / 2 - (record.y + NODE_H / 2) * state.zoom };
+    state.pan = { x: rect.width / 2 - (record.x + nodeWidth(nodeById(id)) / 2) * state.zoom, y: rect.height / 2 - (record.y + NODE_H / 2) * state.zoom };
     updateViewportTransform();
   }
 
@@ -813,11 +831,24 @@
       [...ids].filter(id => !seen.has(id)).sort().forEach((id, index) => layer.set(id, depth + index % 2));
       const groups = new Map();
       [...ids].sort().forEach(id => { const value = layer.get(id) || 0; if (!groups.has(value)) groups.set(value, []); groups.get(value).push(id); });
-      [...groups.entries()].sort((a, b) => a[0] - b[0]).forEach(([column, group]) => group.forEach((id, row) => {
-        const record = activeView().nodes.find(item => item.nodeId === id);
-        if (state.layoutDirection === 'LR') { record.x = 70 + column * 270; record.y = 70 + row * 125; }
-        else { record.x = 70 + row * 245; record.y = 70 + column * 145; }
-      }));
+      const orderedGroups = [...groups.entries()].sort((a, b) => a[0] - b[0]);
+      let columnX = 70;
+      orderedGroups.forEach(([column, group]) => {
+        let rowX = 70;
+        const columnWidth = Math.max(...group.map(id => nodeWidth(nodeById(id))));
+        group.forEach((id, row) => {
+          const record = activeView().nodes.find(item => item.nodeId === id);
+          if (state.layoutDirection === 'LR') {
+            record.x = columnX;
+            record.y = 70 + row * 125;
+          } else {
+            record.x = rowX;
+            record.y = 70 + column * 145;
+            rowX += nodeWidth(nodeById(id)) + 61;
+          }
+        });
+        columnX += columnWidth + 86;
+      });
     });
     requestAnimationFrame(() => fitToScreen());
     toast(`Arranged ${graph.records.length} objects ${state.layoutDirection === 'LR' ? 'left to right' : 'top to bottom'}`);
@@ -876,11 +907,11 @@
     });
   }
 
-  function defaultPosition() {
+  function defaultPosition(width = NODE_MIN_W) {
     const rect = els.canvasViewport.getBoundingClientRect();
     const point = screenToGraph(rect.left + rect.width / 2, rect.top + rect.height / 2);
     const offset = activeView().nodes.length % 6;
-    return { x: Math.round(point.x - NODE_W / 2 + offset * 16), y: Math.round(point.y - NODE_H / 2 + offset * 16) };
+    return { x: Math.round(point.x - width / 2 + offset * 16), y: Math.round(point.y - NODE_H / 2 + offset * 16) };
   }
 
   function openNewObjectDialog() {
@@ -901,10 +932,11 @@
           customType = { id: type, name: customName, category: $('customNodeCategory').value };
         }
         const id = Core.uniqueId(type, name, state.project.nodes.map(node => node.id));
-        const position = defaultPosition();
+        const newNode = { id, type, name, description: $('newNodeDescription').value.trim(), tags: $('newNodeTags').value.split(',').map(tag => tag.trim()).filter(Boolean), properties: {} };
+        const position = defaultPosition(nodeWidth(newNode));
         commit(() => {
           if (customType) state.project.nodeTypes.push(customType);
-          state.project.nodes.push({ id, type, name, description: $('newNodeDescription').value.trim(), tags: $('newNodeTags').value.split(',').map(tag => tag.trim()).filter(Boolean), properties: {} });
+          state.project.nodes.push(newNode);
           activeView().nodes.push({ nodeId: id, ...position });
         });
         selectNode(id); toast(`${name} created`); return true;
@@ -940,7 +972,11 @@
       onSubmit: () => {
         const addable = addableIds();
         if (!addable.length) { toast('Select an object that is not already in this view.', 'warning'); return false; }
-        commit(() => addable.forEach((id, index) => { const position = defaultPosition(); activeView().nodes.push({ nodeId: id, x: position.x + (index % 3) * 220, y: position.y + Math.floor(index / 3) * 110 }); }));
+        const widths = addable.map(id => nodeWidth(nodeById(id)));
+        const columnWidths = [0, 1, 2].map(column => Math.max(0, ...widths.filter((_, index) => index % 3 === column)));
+        const origin = defaultPosition(columnWidths[0] || NODE_MIN_W);
+        const columnOffsets = [0, columnWidths[0] + 36, columnWidths[0] + columnWidths[1] + 72];
+        commit(() => addable.forEach((id, index) => activeView().nodes.push({ nodeId: id, x: origin.x + columnOffsets[index % 3], y: origin.y + Math.floor(index / 3) * 110 })));
         toast(`${addable.length} object${addable.length === 1 ? '' : 's'} added to ${activeView().name}`); return true;
       },
       footerAction: {
@@ -999,7 +1035,7 @@
         commit(() => {
           if (customType) state.project.edgeTypes.push(customType);
           state.project.edges.push({ id, source: sourceId, target: targetId, type, description: $('newEdgeDescription').value.trim(), properties: {} });
-          if (!activeView().nodes.some(record => record.nodeId === targetId)) { const position = defaultPosition(); activeView().nodes.push({ nodeId: targetId, x: position.x + 260, y: position.y }); }
+          if (!activeView().nodes.some(record => record.nodeId === targetId)) { const position = defaultPosition(nodeWidth(nodeById(targetId))); activeView().nodes.push({ nodeId: targetId, x: position.x + 260, y: position.y }); }
         });
         selectEdge(id); toast('Relationship created'); return true;
       }
