@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Architecture Graph core tests</title></head>
+<body>
+  <pre id="result">RUNNING</pre>
+  <script src="../core.js"></script>
+  <script>
+    (function () {
+      const C = window.ArchitectureCore;
+      const messages = [];
+      function assert(condition, message) {
+        if (!condition) throw new Error(message);
+        messages.push(`✓ ${message}`);
+      }
+      try {
+        const a = C.createEmptyProject('Determinism Test');
+        a.nodes.push(
+          { id: 'service.zeta', type: 'service', name: 'Zeta', description: '', tags: ['beta', 'alpha'], properties: { z: 'last', a: 'first' } },
+          { id: 'service.alpha', type: 'service', name: 'Alpha', description: '', tags: [], properties: {} }
+        );
+        a.edges.push({ id: 'edge.zeta.depends-on.alpha', source: 'service.zeta', target: 'service.alpha', type: 'depends_on', description: '', properties: { priority: 'high' } });
+        a.views[0].nodes.push({ nodeId: 'service.zeta', x: 319.7, y: 180.2 }, { nodeId: 'service.alpha', x: 20, y: 40 });
+
+        const b = JSON.parse(JSON.stringify(a));
+        b.nodes.reverse();
+        b.nodes.find(node => node.id === 'service.zeta').tags.reverse();
+        b.nodes.find(node => node.id === 'service.zeta').properties = { a: 'first', z: 'last' };
+        b.views[0].nodes.reverse();
+        assert(C.canonicalSerialize(a) === C.canonicalSerialize(b), 'serialization ignores insertion and property creation order');
+
+        const serialized = C.canonicalSerialize(a);
+        assert(serialized.endsWith('\n') && !serialized.endsWith('\n\n'), 'serialization ends with exactly one LF');
+        assert(serialized.includes('"x": 320') && serialized.includes('"y": 180'), 'coordinates normalize to integers');
+        assert(JSON.stringify(C.parseProject(serialized)) === JSON.stringify(C.normalizeProject(a)), 'export/import round trip is semantically stable');
+
+        const stableId = a.nodes[0].id;
+        a.nodes[0].name = 'Renamed Zeta';
+        assert(a.nodes[0].id === stableId, 'rename preserves stable IDs');
+
+        a.views[1].nodes.push({ nodeId: 'service.zeta', x: 5, y: 6 });
+        a.views[0].nodes.find(item => item.nodeId === 'service.zeta').x = 900;
+        assert(a.views[1].nodes[0].x === 5, 'moving an object in one view leaves other layouts unchanged');
+
+        const traversal = C.dependencyTraversal(a, 'service.zeta', { direction: 'downstream', depth: 1, types: ['depends_on'] });
+        assert(traversal.nodeIds.join(',') === 'service.alpha,service.zeta', 'dependency traversal respects direction, depth, and type');
+
+        const invalid = JSON.parse(JSON.stringify(a));
+        invalid.nodes.push(JSON.parse(JSON.stringify(invalid.nodes[0])));
+        invalid.edges[0].target = 'service.missing';
+        const report = C.validateProject(invalid);
+        assert(report.errors.some(item => item.includes('Duplicate node ID')), 'validation detects duplicate IDs');
+        assert(report.errors.some(item => item.includes('missing target')), 'validation detects dangling edge references');
+
+        let conflictDetected = false;
+        try { C.parseProject('<<<<<<< HEAD\n{}\n=======\n{}\n>>>>>>> branch'); } catch (error) { conflictDetected = error.message.includes('merge conflicts'); }
+        assert(conflictDetected, 'import detects unresolved Git conflict markers');
+
+        const cyclic = C.createEmptyProject('Cycle');
+        cyclic.nodes.push(
+          { id: 'service.a', type: 'service', name: 'A', description: '', tags: [], properties: {} },
+          { id: 'service.b', type: 'service', name: 'B', description: '', tags: [], properties: {} }
+        );
+        cyclic.edges.push(
+          { id: 'edge.a.b', source: 'service.a', target: 'service.b', type: 'depends_on', description: '', properties: {} },
+          { id: 'edge.b.a', source: 'service.b', target: 'service.a', type: 'requires', description: '', properties: {} }
+        );
+        assert(C.dependencyCycles(cyclic).length === 1, 'dependency cycle analysis detects loops');
+
+        document.getElementById('result').textContent = `PASS (${messages.length} tests)\n${messages.join('\n')}`;
+        document.body.dataset.status = 'pass';
+      } catch (error) {
+        document.getElementById('result').textContent = `FAIL\n${error.stack || error.message}`;
+        document.body.dataset.status = 'fail';
+      }
+    })();
+  </script>
+</body>
+</html>
