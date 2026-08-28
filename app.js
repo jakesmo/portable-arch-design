@@ -197,7 +197,7 @@
 
   function ensureActiveView() {
     if (!state.project.views.length) {
-      state.project.views.push({ id: 'view.overview', name: 'Overview', description: '', filter: {}, nodes: [], edges: [] });
+      state.project.views.push({ id: 'view.overview', name: 'Default', description: '', filter: {}, nodes: [], edges: [] });
     }
     if (!state.project.views.some(view => view.id === state.activeViewId)) state.activeViewId = state.project.views[0].id;
   }

@@ -1,6 +1,6 @@
 # Architecture Graph
 
-A portable, browser-native editor for multi-layer technical dependency graphs. It keeps one canonical model of objects and relationships while allowing independent Physical, Logical, People, Data, Overview, and custom views.
+A portable, browser-native editor for multi-layer technical dependency graphs. It keeps one canonical model of objects and relationships while allowing independent graph projections with their own membership, filters, and layout.
 
 ![Architecture Graph interface](./architecture-graph-preview.png)
 

@@ -42,7 +42,7 @@
   }));
 
   const DEFAULT_VIEWS = [
-    ['view.overview', 'Overview', []]
+    ['view.overview', 'Default', []]
   ];
 
   function slugify(value, fallback = 'item') {
