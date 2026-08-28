@@ -25,7 +25,7 @@
     connectTool: $('connectTool'), zoomOutBtn: $('zoomOutBtn'), zoomInBtn: $('zoomInBtn'), zoomLabel: $('zoomLabel'), fitBtn: $('fitBtn'),
     autoArrangeBtn: $('autoArrangeBtn'), layoutDirectionBtn: $('layoutDirectionBtn'), contextMenu: $('contextMenu'), toastRegion: $('toastRegion'),
     propertiesEmpty: $('propertiesEmpty'), propertiesPanel: $('propertiesPanel'), formDialog: $('formDialog'), modalForm: $('modalForm'),
-    modalEyebrow: $('modalEyebrow'), modalTitle: $('modalTitle'), modalBody: $('modalBody'), modalSubmit: $('modalSubmit'),
+    modalEyebrow: $('modalEyebrow'), modalTitle: $('modalTitle'), modalBody: $('modalBody'), modalLeftActions: $('modalLeftActions'), modalSubmit: $('modalSubmit'),
     reportDialog: $('reportDialog'), reportBody: $('reportBody'), reportClose: $('reportClose'), reportDone: $('reportDone'),
     confirmDialog: $('confirmDialog'), confirmEyebrow: $('confirmEyebrow'), confirmTitle: $('confirmTitle'), confirmBody: $('confirmBody'),
     confirmCancel: $('confirmCancel'), confirmAction: $('confirmAction')
@@ -821,12 +821,23 @@
     toast(`Arranged ${graph.records.length} objects ${state.layoutDirection === 'LR' ? 'left to right' : 'top to bottom'}`);
   }
 
-  function openForm({ eyebrow = '', title, body, submit = 'Save', onSubmit, wide = false }) {
+  function openForm({ eyebrow = '', title, body, submit = 'Save', onSubmit, wide = false, footerAction = null }) {
     state.modalCallback = onSubmit;
     els.modalEyebrow.textContent = eyebrow;
     els.modalTitle.textContent = title;
     els.modalBody.innerHTML = body;
+    els.modalLeftActions.innerHTML = '';
+    if (footerAction) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = 'modalAuxAction';
+      button.className = `button ${footerAction.className || 'secondary'}`;
+      button.textContent = footerAction.label;
+      button.addEventListener('click', footerAction.onClick);
+      els.modalLeftActions.appendChild(button);
+    }
     els.modalSubmit.textContent = submit;
+    els.modalSubmit.disabled = false;
     els.formDialog.style.width = wide ? 'min(600px, calc(100vw - 40px))' : '';
     els.formDialog.showModal();
     requestAnimationFrame(() => {
@@ -905,28 +916,60 @@
     $('newNodeType').addEventListener('change', event => $('customNodeTypeFields').classList.toggle('hidden', event.target.value !== '__custom'));
   }
 
-  function openAddExistingDialog() {
+  function openBrowseExistingDialog() {
     const present = new Set(activeView().nodes.map(record => record.nodeId));
-    if (!state.project.nodes.length) return openNewObjectDialog();
-    openForm({ eyebrow: `Reuse in ${activeView().name}`, title: 'Add existing objects', submit: 'Add selected', wide: true, body: `
+    const selected = new Set();
+    const selectedIds = () => [...selected].filter(id => nodeById(id));
+    const addableIds = () => selectedIds().filter(id => !present.has(id));
+    const updateActions = () => {
+      const addableCount = addableIds().length;
+      const selectedCount = selectedIds().length;
+      els.modalSubmit.textContent = addableCount ? `Add to ${activeView().name} (${addableCount})` : `Add to ${activeView().name}`;
+      els.modalSubmit.disabled = addableCount === 0;
+      const deleteButton = $('modalAuxAction');
+      if (deleteButton) {
+        deleteButton.textContent = selectedCount ? `Delete selected (${selectedCount})…` : 'Delete selected…';
+        deleteButton.disabled = selectedCount === 0;
+      }
+    };
+    openForm({ eyebrow: 'Canonical model', title: 'Browse existing objects', submit: `Add to ${activeView().name}`, wide: true, body: `
       <div class="field"><label>Find an object</label><input id="existingSearch" type="search" placeholder="Search by name, ID, type, or tag…"></div>
       <div id="objectPicker" class="object-picker"></div>`,
       onSubmit: () => {
-        const selected = [...els.modalBody.querySelectorAll('[data-pick-object]:checked')].map(input => input.value).filter(id => !present.has(id));
-        if (!selected.length) { toast('Select at least one object to add.', 'warning'); return false; }
-        commit(() => selected.forEach((id, index) => { const position = defaultPosition(); activeView().nodes.push({ nodeId: id, x: position.x + (index % 3) * 220, y: position.y + Math.floor(index / 3) * 110 }); }));
-        toast(`${selected.length} object${selected.length === 1 ? '' : 's'} added to ${activeView().name}`); return true;
+        const addable = addableIds();
+        if (!addable.length) { toast('Select an object that is not already in this view.', 'warning'); return false; }
+        commit(() => addable.forEach((id, index) => { const position = defaultPosition(); activeView().nodes.push({ nodeId: id, x: position.x + (index % 3) * 220, y: position.y + Math.floor(index / 3) * 110 }); }));
+        toast(`${addable.length} object${addable.length === 1 ? '' : 's'} added to ${activeView().name}`); return true;
+      },
+      footerAction: {
+        label: 'Delete selected…',
+        className: 'secondary danger-zone',
+        onClick: () => {
+          const ids = selectedIds();
+          if (!ids.length) return;
+          els.formDialog.close();
+          confirmDeleteNodes(ids);
+        }
       }
     });
     const draw = query => {
       const words = query.toLowerCase();
       const matches = state.project.nodes.filter(node => !words || searchableNode(node).includes(words));
       $('objectPicker').innerHTML = matches.map(node => {
-        const isPresent = present.has(node.id); const category = categoryOf(node);
-        return `<label class="object-pick-item ${isPresent ? 'disabled' : ''}" style="${categoryVars(category)}"><span class="object-pick-icon">${escapeHtml(iconLetter(node))}</span><span class="object-pick-copy"><strong>${escapeHtml(node.name)}</strong><span>${escapeHtml(typeName(node))} · ${escapeHtml(node.id)}</span></span>${isPresent ? '<span class="object-pick-status">In view</span>' : `<input data-pick-object type="checkbox" value="${attr(node.id)}">`}</label>`;
-      }).join('') || '<div class="search-empty">No matching objects</div>';
+        const memberships = state.project.views.filter(view => view.nodes.some(record => record.nodeId === node.id));
+        const membershipNames = memberships.map(view => view.name);
+        const compactViews = memberships.slice(0, 2).map(view => `<span class="object-view-chip ${view.id === state.activeViewId ? 'current' : ''}">${escapeHtml(view.name)}</span>`).join('');
+        const moreViews = memberships.length > 2 ? `<span class="object-view-more">+${memberships.length - 2}</span>` : '';
+        const viewSummary = memberships.length ? `${compactViews}${moreViews}` : '<span class="object-view-chip orphan">No views</span>';
+        const category = categoryOf(node);
+        return `<label class="object-pick-item" style="${categoryVars(category)}"><span class="object-pick-icon">${escapeHtml(iconLetter(node))}</span><span class="object-pick-copy"><strong>${escapeHtml(node.name)}</strong><span>${escapeHtml(typeName(node))} · ${escapeHtml(node.id)}</span></span><span class="object-pick-meta"><span class="object-pick-views" title="${attr(membershipNames.join(', ') || 'Appears in no views')}">${viewSummary}</span><input data-pick-object type="checkbox" value="${attr(node.id)}" ${selected.has(node.id) ? 'checked' : ''}></span></label>`;
+      }).join('') || `<div class="search-empty">${state.project.nodes.length ? 'No matching objects' : 'No canonical objects yet. Create your first object from the canvas.'}</div>`;
+      $('objectPicker').querySelectorAll('[data-pick-object]').forEach(input => input.addEventListener('change', () => {
+        if (input.checked) selected.add(input.value); else selected.delete(input.value);
+        updateActions();
+      }));
     };
-    draw(''); $('existingSearch').addEventListener('input', event => draw(event.target.value));
+    draw(''); updateActions(); $('existingSearch').addEventListener('input', event => draw(event.target.value));
   }
 
   function openRelationshipDialog(sourceId, fixedTargetId = null) {
@@ -1223,8 +1266,8 @@
     els.newViewBtn.addEventListener('click', openNewViewDialog);
     els.addObjectBtn.addEventListener('click', openNewObjectDialog);
     els.emptyAddObject.addEventListener('click', openNewObjectDialog);
-    els.addExistingBtn.addEventListener('click', openAddExistingDialog);
-    els.emptyAddExisting.addEventListener('click', openAddExistingDialog);
+    els.addExistingBtn.addEventListener('click', openBrowseExistingDialog);
+    els.emptyAddExisting.addEventListener('click', openBrowseExistingDialog);
     els.viewMenuBtn.addEventListener('click', event => showViewContext(event.clientX, event.clientY));
     els.undoBtn.addEventListener('click', undo); els.redoBtn.addEventListener('click', redo);
     els.selectTool.addEventListener('click', () => setTool('select')); els.connectTool.addEventListener('click', () => setTool(state.tool === 'connect' ? 'select' : 'connect'));

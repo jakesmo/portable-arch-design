@@ -98,7 +98,7 @@
           <div class="canvas-actions">
             <button id="addExistingBtn" class="button canvas-button">
               <svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3"></circle><path d="M4.5 19a5.5 5.5 0 0 1 11 0M18 8v6M15 11h6"></path></svg>
-              Add existing
+              Browse existing
             </button>
             <button id="addObjectBtn" class="button dark">
               <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
@@ -140,7 +140,7 @@
             <p>Create a canonical object here, or reuse an object that already exists in your project.</p>
             <div class="empty-actions">
               <button id="emptyAddObject" class="button dark">Create first object</button>
-              <button id="emptyAddExisting" class="button secondary">Add existing</button>
+              <button id="emptyAddExisting" class="button secondary">Browse existing</button>
             </div>
           </div>
 
@@ -199,6 +199,7 @@
       </div>
       <div id="modalBody" class="modal-body"></div>
       <div class="modal-footer">
+        <div id="modalLeftActions" class="modal-left-actions"></div>
         <button value="cancel" formnovalidate class="button secondary">Cancel</button>
         <button id="modalSubmit" value="default" class="button primary">Save</button>
       </div>
