@@ -367,25 +367,7 @@
     const source = recordMap.get(edge.source);
     const target = recordMap.get(edge.target);
     if (!source || !target) return '';
-    const start = { x: source.x + NODE_W, y: source.y + NODE_H / 2 };
-    const end = { x: target.x, y: target.y + NODE_H / 2 };
-    let d;
-    if (Math.abs(end.x - start.x) < 45) {
-      const sy = source.y < target.y ? source.y + NODE_H : source.y;
-      const ty = source.y < target.y ? target.y : target.y + NODE_H;
-      const sx = source.x + NODE_W / 2;
-      const tx = target.x + NODE_W / 2;
-      const bend = Math.max(35, Math.abs(ty - sy) / 2);
-      d = `M ${sx} ${sy} C ${sx} ${sy + (ty > sy ? bend : -bend)}, ${tx} ${ty - (ty > sy ? bend : -bend)}, ${tx} ${ty}`;
-    } else {
-      const reverse = end.x < start.x;
-      const sx = reverse ? source.x : start.x;
-      const ex = reverse ? target.x + NODE_W : end.x;
-      const sy = start.y;
-      const ey = end.y;
-      const bend = Math.max(45, Math.abs(ex - sx) * .45) * (reverse ? -1 : 1);
-      d = `M ${sx} ${sy} C ${sx + bend} ${sy}, ${ex - bend} ${ey}, ${ex} ${ey}`;
-    }
+    const d = shortestPortRoute(source, target);
     const mid = bezierMidpoint(d, source, target);
     const label = edgeTypeName(edge);
     const labelWidth = Math.max(48, label.length * 5.6 + 14);
@@ -397,6 +379,34 @@
       <rect class="edge-label-bg" x="${mid.x - labelWidth / 2}" y="${mid.y - 9}" width="${labelWidth}" height="18" rx="8"></rect>
       <text class="edge-label" x="${mid.x}" y="${mid.y + .5}">${escapeHtml(label)}</text>
     </g>`;
+  }
+
+  function shortestPortRoute(source, target) {
+    const sourceCenter = { x: source.x + NODE_W / 2, y: source.y + NODE_H / 2 };
+    const targetCenter = { x: target.x + NODE_W / 2, y: target.y + NODE_H / 2 };
+    const targetIsRight = targetCenter.x >= sourceCenter.x;
+    const targetIsBelow = targetCenter.y >= sourceCenter.y;
+    const horizontal = {
+      start: { x: source.x + (targetIsRight ? NODE_W : 0), y: sourceCenter.y },
+      end: { x: target.x + (targetIsRight ? 0 : NODE_W), y: targetCenter.y },
+      sourceDirection: targetIsRight ? 1 : -1,
+      targetDirection: targetIsRight ? -1 : 1
+    };
+    const vertical = {
+      start: { x: sourceCenter.x, y: source.y + (targetIsBelow ? NODE_H : 0) },
+      end: { x: targetCenter.x, y: target.y + (targetIsBelow ? 0 : NODE_H) },
+      sourceDirection: targetIsBelow ? 1 : -1,
+      targetDirection: targetIsBelow ? -1 : 1
+    };
+    const distance = route => Math.hypot(route.end.x - route.start.x, route.end.y - route.start.y);
+    const useHorizontal = distance(horizontal) <= distance(vertical);
+    const route = useHorizontal ? horizontal : vertical;
+    const axisGap = useHorizontal ? Math.abs(route.end.x - route.start.x) : Math.abs(route.end.y - route.start.y);
+    const bend = Math.max(36, Math.min(160, axisGap * .45));
+    if (useHorizontal) {
+      return `M ${route.start.x} ${route.start.y} C ${route.start.x + route.sourceDirection * bend} ${route.start.y}, ${route.end.x + route.targetDirection * bend} ${route.end.y}, ${route.end.x} ${route.end.y}`;
+    }
+    return `M ${route.start.x} ${route.start.y} C ${route.start.x} ${route.start.y + route.sourceDirection * bend}, ${route.end.x} ${route.end.y + route.targetDirection * bend}, ${route.end.x} ${route.end.y}`;
   }
 
   function bezierMidpoint(path, source, target) {
