@@ -67,6 +67,7 @@
   function categoryOf(node) { return (nodeType(node && node.type) || {}).category || 'logical'; }
   function typeName(node) { return (nodeType(node && node.type) || {}).name || titleCase(node && node.type); }
   function edgeTypeName(edge) { return (edgeType(edge && edge.type) || {}).name || titleCase(edge && edge.type); }
+  function isUndirectedEdge(edge) { return (edgeType(edge && edge.type) || {}).direction === 'undirected'; }
   function categoryVars(category) {
     const [color, soft] = CATEGORY_COLORS[category] || CATEGORY_COLORS.logical;
     return `--cat-color:${color};--cat-soft:${soft}`;
@@ -525,8 +526,8 @@
 
   function relationshipList(node, incoming, outgoing) {
     const items = [
-      ...outgoing.map(edge => ({ edge, direction: '→', other: nodeById(edge.target), label: `Outgoing · ${edgeTypeName(edge)}` })),
-      ...incoming.map(edge => ({ edge, direction: '←', other: nodeById(edge.source), label: `Incoming · ${edgeTypeName(edge)}` }))
+      ...outgoing.map(edge => ({ edge, direction: isUndirectedEdge(edge) ? '—' : '→', other: nodeById(edge.target), label: `${isUndirectedEdge(edge) ? 'Undirected' : 'Outgoing'} · ${edgeTypeName(edge)}` })),
+      ...incoming.map(edge => ({ edge, direction: isUndirectedEdge(edge) ? '—' : '←', other: nodeById(edge.source), label: `${isUndirectedEdge(edge) ? 'Undirected' : 'Incoming'} · ${edgeTypeName(edge)}` }))
     ];
     if (!items.length) return '<div class="empty-microcopy">No relationships yet.</div>';
     return `<div class="relation-list">${items.map(item => `<button class="relation-item" data-edge-select="${attr(item.edge.id)}"><span class="relation-direction">${item.direction}</span><span class="relation-copy"><strong>${escapeHtml(item.other ? item.other.name : 'Missing object')}</strong><span>${escapeHtml(item.label)}</span></span></button>`).join('')}</div>`;
@@ -580,14 +581,15 @@
     if (!edge) return clearSelection(true);
     const source = nodeById(edge.source);
     const target = nodeById(edge.target);
+    const undirected = isUndirectedEdge(edge);
     const properties = Object.entries(edge.properties || {});
     els.propertiesPanel.innerHTML = `
-      <div class="property-header" style="${categoryVars('logical')}"><div class="property-type-icon">↗</div><div class="property-heading"><h2>${escapeHtml(edgeTypeName(edge))}</h2><span>Relationship</span></div></div>
+      <div class="property-header" style="${categoryVars('logical')}"><div class="property-type-icon">${undirected ? '—' : '↗'}</div><div class="property-heading"><h2>${escapeHtml(edgeTypeName(edge))}</h2><span>Relationship</span></div></div>
       <div class="property-body">
         <section class="property-section"><div class="property-section-title">Relationship details</div>
           <div class="field"><label>Type</label><select id="edgePropType">${state.project.edgeTypes.map(type => `<option value="${attr(type.id)}" ${type.id === edge.type ? 'selected' : ''}>${escapeHtml(type.name)}</option>`).join('')}</select></div>
-          <div class="field"><label>Source</label><input value="${attr(source ? source.name : edge.source)}" readonly></div>
-          <div class="field"><label>Target</label><input value="${attr(target ? target.name : edge.target)}" readonly></div>
+          <div class="field"><label>${undirected ? 'Endpoint A' : 'Source'}</label><input value="${attr(source ? source.name : edge.source)}" readonly></div>
+          <div class="field"><label>${undirected ? 'Endpoint B' : 'Target'}</label><input value="${attr(target ? target.name : edge.target)}" readonly></div>
           <div class="field"><label>Stable ID</label><input value="${attr(edge.id)}" readonly></div>
           <div class="field"><label>Description</label><textarea id="edgePropDescription" placeholder="Describe this relationship…">${escapeHtml(edge.description)}</textarea></div>
         </section>
@@ -595,8 +597,8 @@
           <div>${properties.map(([key, value]) => propertyRow(key, value)).join('') || '<div class="empty-microcopy">No custom metadata yet.</div>'}</div>
         </section>
         <section class="property-section property-actions">
-          <button id="goSourceBtn" class="button secondary">Select ${escapeHtml(source ? source.name : 'source')}</button>
-          <button id="goTargetBtn" class="button secondary">Select ${escapeHtml(target ? target.name : 'target')}</button>
+          <button id="goSourceBtn" class="button secondary">Select ${escapeHtml(source ? source.name : (undirected ? 'endpoint A' : 'source'))}</button>
+          <button id="goTargetBtn" class="button secondary">Select ${escapeHtml(target ? target.name : (undirected ? 'endpoint B' : 'target'))}</button>
           <button id="deleteEdgeBtn" class="button secondary danger-zone">Delete relationship</button>
         </section>
       </div>`;
