@@ -37,7 +37,7 @@
         a.nodes[0].name = 'Renamed Zeta';
         assert(a.nodes[0].id === stableId, 'rename preserves stable IDs');
 
-        a.views[1].nodes.push({ nodeId: 'service.zeta', x: 5, y: 6 });
+        a.views.push({ id: 'view.second', name: 'Second view', description: '', filter: {}, nodes: [{ nodeId: 'service.zeta', x: 5, y: 6 }], edges: [] });
         a.views[0].nodes.find(item => item.nodeId === 'service.zeta').x = 900;
         assert(a.views[1].nodes[0].x === 5, 'moving an object in one view leaves other layouts unchanged');
 

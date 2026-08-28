@@ -42,11 +42,7 @@
   }));
 
   const DEFAULT_VIEWS = [
-    ['view.overview', 'Overview', []],
-    ['view.physical', 'Physical', ['physical']],
-    ['view.logical', 'Logical', ['logical', 'operational']],
-    ['view.people', 'People', ['people']],
-    ['view.data', 'Data', ['data']]
+    ['view.overview', 'Overview', []]
   ];
 
   function slugify(value, fallback = 'item') {
