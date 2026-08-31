@@ -2,7 +2,7 @@
 
 A portable, browser-native editor for multi-layer technical dependency graphs. It keeps one canonical model of objects and relationships while allowing independent graph projections with their own membership, filters, and layout.
 
-![Architecture Graph interface](./doc/architecture-graph-preview.png)
+![Architecture Graph interface](./docs/architecture-graph-preview.png)
 
 ## Run it
 
@@ -44,7 +44,7 @@ Browser-local work is autosaved transactionally in IndexedDB. Use **Export** to 
 .
 ├── portable-arch-design.html          # complete standalone application
 ├── README.md
-├── doc/
+├── docs/
 │   ├── architecture-graph-preview.png # README preview image
 │   └── spec.md                       # architecture specification
 └── tests/
