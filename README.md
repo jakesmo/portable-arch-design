@@ -6,7 +6,7 @@ A portable, browser-native editor for multi-layer technical dependency graphs. I
 
 ## Run it
 
-Open [`portable-arch-design.html`](./portable-arch-design.html) directly in a modern browser. The application is fully self-contained in that one HTML file: interface styling, schema/core logic, editor logic, and browser-local persistence are all embedded. No server, package install, database, runtime, or build step is required.
+Open [`portable-arch-design.html`](./portable-arch-design.html) (or [visit the github pages instance](https://jakesmo.github.io/portable-arch-design/portable-arch-design.html)) in a modern browser. The application is fully self-contained in that one HTML file: interface styling, schema/core logic, editor logic, and browser-local persistence are all embedded. No server, package install, database, runtime, or build step is required.
 
 Browser-local work is autosaved transactionally in IndexedDB. Use **Export** to create the deterministic `<ProjectName>.arch.json` artifact intended for Git, sharing, and archival. Import it again with **Open**.
 
