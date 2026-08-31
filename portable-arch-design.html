@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4f5f7">
+  <link id="favicon" rel="icon" type="image/svg+xml" sizes="any">
   <title>Architecture Graph</title>
   <style>
 :root {
@@ -64,15 +65,7 @@ svg { display: block; }
 
 .brand-cluster, .project-row, .top-actions, .canvas-actions, .view-heading-wrap { display: flex; align-items: center; }
 .brand-cluster { min-width: 0; gap: 12px; }
-.brand-mark { width: 32px; height: 32px; position: relative; flex: 0 0 auto; }
-.brand-mark span { position: absolute; width: 10px; height: 10px; border-radius: 3px; background: var(--ink); }
-.brand-mark span:nth-child(1) { left: 1px; top: 1px; background: var(--blue); }
-.brand-mark span:nth-child(2) { right: 2px; top: 1px; }
-.brand-mark span:nth-child(3) { left: 1px; bottom: 2px; }
-.brand-mark span:nth-child(4) { right: 2px; bottom: 2px; background: var(--physical); }
-.brand-mark::before, .brand-mark::after { content: ''; position: absolute; background: #b9c0cb; z-index: 0; }
-.brand-mark::before { width: 16px; height: 1px; left: 8px; top: 8px; transform: rotate(45deg); }
-.brand-mark::after { width: 1px; height: 16px; left: 8px; top: 8px; }
+.brand-mark { width: 32px; height: 32px; flex: 0 0 auto; }
 .project-identity { min-width: 0; }
 .project-row { gap: 8px; min-width: 0; }
 .project-name { border: 0; background: transparent; padding: 0; max-width: 250px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; font-weight: 690; text-align: left; }
@@ -382,9 +375,13 @@ kbd { font-family: inherit; }
   <div id="app" class="app-shell">
     <header class="topbar">
       <div class="brand-cluster">
-        <div class="brand-mark" aria-hidden="true">
-          <span></span><span></span><span></span><span></span>
-        </div>
+        <svg id="brandMark" class="brand-mark" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+          <rect width="64" height="64" rx="14" fill="#16181d"></rect>
+          <path d="M6 60 32 15l26 45M17 41h30" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></path>
+          <rect x="25" y="8" width="14" height="14" rx="4" fill="#5b7cff"></rect>
+          <rect x="10" y="34" width="14" height="14" rx="4" fill="#ffc247"></rect>
+          <rect x="40" y="34" width="14" height="14" rx="4" fill="#20d3b0"></rect>
+        </svg>
         <div class="project-identity">
           <div class="project-row">
             <button id="projectName" class="project-name" title="Edit project details">Untitled Architecture</button>
@@ -1009,6 +1006,7 @@ kbd { font-family: inherit; }
   };
 
   const $ = id => document.getElementById(id);
+  $('favicon').href = `data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString($('brandMark')))}`;
   const textMeasureContext = document.createElement('canvas').getContext('2d');
   const textWidthCache = new Map();
   const els = {
